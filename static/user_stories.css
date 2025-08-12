@@ -1,0 +1,70 @@
+.tree-node {
+    list-style-type: none;
+    margin: 5px 0;
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    cursor: pointer;
+}
+
+.tree-node:hover {
+    background-color: #e9ecef;
+}
+
+.tree-node.selected {
+    background-color: #0d6efd;
+    color: white;
+}
+
+.tree-node.menu {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+.tree-node.page {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+}
+
+.tree-node.menu:hover {
+    background-color: #ffec99;
+}
+
+.tree-node.page:hover {
+    background-color: #a3daff;
+}
+
+.tree-node.menu.selected {
+    background-color: #ffc107;
+    color: black;
+}
+
+.tree-node.page.selected {
+    background-color: #0dcaf0;
+    color: black;
+}
+
+.node-children {
+    margin-left: 20px;
+    padding-left: 10px;
+    border-left: 1px dashed #ccc;
+}
+
+.node-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.node-type-badge {
+    font-size: 0.75em;
+}
+
+.menu .node-type-badge {
+    background-color: #ffc107;
+}
+
+.page .node-type-badge {
+    background-color: #17a2b8;
+}
