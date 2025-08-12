@@ -77,7 +77,8 @@ def get_project_modules(project_id):
 
 @projects_bp.route('/add_project_node', methods=['POST'])
 def add_project_node():
-    if not session.get('is_admin'):
+    # 检查权限
+    if not check_system_feature_access(session, 'projects.projects'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     name = request.form.get('name')
@@ -125,7 +126,8 @@ def add_project_node():
 
 @projects_bp.route('/edit_project_node/<int:node_id>', methods=['POST'])
 def edit_project_node(node_id):
-    if not session.get('is_admin'):
+    # 检查权限
+    if not check_system_feature_access(session, 'projects.projects'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     node = ProjectInfo.query.get(node_id)
@@ -152,7 +154,8 @@ def edit_project_node(node_id):
 
 @projects_bp.route('/delete_project_node/<int:node_id>', methods=['POST'])
 def delete_project_node(node_id):
-    if not session.get('is_admin'):
+    # 检查权限
+    if not check_system_feature_access(session, 'projects.projects'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     node = ProjectInfo.query.get(node_id)
@@ -174,7 +177,8 @@ def delete_project_node(node_id):
 
 @projects_bp.route('/move_project_node', methods=['POST'])
 def move_project_node():
-    if not session.get('is_admin'):
+    # 检查权限
+    if not check_system_feature_access(session, 'projects.projects'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     node_id = request.form.get('node_id', type=int)
