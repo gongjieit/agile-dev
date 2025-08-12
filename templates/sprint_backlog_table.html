@@ -1,0 +1,65 @@
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                {% if check_system_feature_access(session, 'sprints.sprints') %}
+                <th>操作</th>
+                {% endif %}
+                <th>用户故事ID</th>
+                <th>用户故事</th>
+                <th>优先级</th>
+                <th>故事点</th>
+                <th>状态</th>
+                <th>负责人</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for backlog in backlogs or sprint.sprint_backlogs %}
+            <tr>
+                {% if check_system_feature_access(session, 'sprints.sprints') %}
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editBacklogModal"
+                        data-id="{{ backlog.id }}"
+                        data-story-points="{{ backlog.story_points or '' }}"
+                        data-status="{{ backlog.status }}"
+                        data-priority="{{ backlog.priority }}"
+                        data-assignee-id="{{ backlog.assignee_id or '' }}">编辑</button>
+                    <!-- 只有在待处理状态才显示删除按钮 -->
+                    {% if backlog.status == '待处理' %}
+                    <button class="btn btn-sm btn-outline-danger remove-from-sprint-btn"
+                        data-id="{{ backlog.id }}"
+                        data-story="{{ backlog.user_story.title }}">移除</button>
+                    {% endif %}
+                </td>
+                {% endif %}
+                <td>{{ backlog.user_story.story_id or '未分配ID' }}</td>
+                <td>{{ backlog.user_story.title }}</td>
+                <td>
+                    {% if backlog.priority == 'P0' %}
+                        <span class="badge bg-danger">{{ backlog.priority }}</span>
+                    {% elif backlog.priority == 'P1' %}
+                        <span class="badge bg-warning text-dark">{{ backlog.priority }}</span>
+                    {% elif backlog.priority == 'P2' %}
+                        <span class="badge bg-info">{{ backlog.priority }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ backlog.priority }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ backlog.story_points or '未分配' }}</td>
+                <td>
+                    {% if backlog.status == '待处理' %}
+                        <span class="badge bg-secondary">{{ backlog.status }}</span>
+                    {% elif backlog.status == '开发中' %}
+                        <span class="badge bg-primary">{{ backlog.status }}</span>
+                    {% elif backlog.status == '测试中' %}
+                        <span class="badge bg-warning text-dark">{{ backlog.status }}</span>
+                    {% elif backlog.status == '已完成' %}
+                        <span class="badge bg-success">{{ backlog.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ backlog.assignee.name if backlog.assignee else '未分配' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

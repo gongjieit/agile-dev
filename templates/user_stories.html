@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户故事管理页面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='user_stories.css') }}">
+    <style>
+        /* 需求列表样式 */
+        .backlog-item {
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+
+        .backlog-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .backlog-item.selected {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .backlog-item.selected:hover {
+            background-color: #0056b3;
+        }
+
+        .priority-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .priority-high {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .priority-medium {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .priority-low {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+    </style>
+    <script>
+    // 当前选中的产品待办事项ID
+    let selectedBacklogId = null;
+
+    // 项目选择变化事件
+    function onProjectChange() {
+        const projectId = document.getElementById('project-filter').value;
+        const statusFilter = document.getElementById('status-filter').value;
+        loadProductBacklogs(projectId, statusFilter);
+    }
+
+    // 状态筛选变化事件
+    function onStatusChange() {
+        const projectId = document.getElementById('project-filter').value;
+        const statusFilter = document.getElementById('status-filter').value;
+        loadProductBacklogs(projectId, statusFilter);
+    }
+
+    // 加载产品待办事项列表
+    function loadProductBacklogs(projectId, status) {
+        const backlogListContainer = document.getElementById('backlog-list');
+        const storiesContainer = document.getElementById('user-stories-list');
+
+        // 清空现有内容
+        backlogListContainer.innerHTML = '<p class="text-muted">加载中...</p>';
+        storiesContainer.innerHTML = '<p class="text-muted">请选择一个需求查看用户故事</p>';
+        selectedBacklogId = null;
+
+        // 构建查询参数
+        let url = '/get_product_backlogs';
+        const params = [];
+        if (projectId) params.push(`project_id=${projectId}`);
+        if (status) params.push(`status=${status}`);
+        if (params.length > 0) url += '?' + params.join('&');
+
+        // 获取产品待办事项列表
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderBacklogList(backlogListContainer, data.backlogs);
+                } else {
+                    backlogListContainer.innerHTML = '<p class="text-danger">加载失败: ' + data.message + '</p>';
+                }
+            })
+            .catch(error => {
+                backlogListContainer.innerHTML = '<p class="text-danger">加载失败: ' + error + '</p>';
+            });
+    }
+
+    // 渲染产品待办事项列表
+    function renderBacklogList(container, backlogs) {
+        if (!backlogs || backlogs.length === 0) {
+            container.innerHTML = '<p class="text-muted">暂无符合条件的需求</p>';
+            return;
+        }
+
+        const ul = document.createElement('ul');
+        ul.className = 'list-group';
+
+        backlogs.forEach(backlog => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item backlog-item';
+            li.setAttribute('data-id', backlog.id);
+
+            // 根据优先级设置样式
+            let priorityClass = '';
+            if (['P0', 'P1'].includes(backlog.priority)) {
+                priorityClass = 'priority-high';
+            } else if (['P2', 'P3'].includes(backlog.priority)) {
+                priorityClass = 'priority-medium';
+            } else if (['P4', 'P5'].includes(backlog.priority)) {
+                priorityClass = 'priority-low';
+            }
+
+            // 根据状态设置样式
+            let statusClass = 'bg-secondary';
+            if (backlog.status === '待讨论') {
+                statusClass = 'bg-warning';
+            } else if (backlog.status === '已澄清') {
+                statusClass = 'bg-info';
+            } else if (backlog.status === '已纳入冲刺') {
+                statusClass = 'bg-primary';
+            } else if (backlog.status === '已完成') {
+                statusClass = 'bg-success';
+            }
+
+            li.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">${backlog.title}</div>
+                        <div class="small text-muted">${backlog.requirement_id || '未分配编号'}</div>
+                    </div>
+                    <div>
+                        <span class="priority-badge ${priorityClass} me-1">${backlog.priority || '未指定'}</span>
+                        <span class="status-badge ${statusClass}">${backlog.status || '未指定'}</span>
+                    </div>
+                </div>
+            `;
+
+            li.addEventListener('click', function() {
+                selectBacklogItem(this, backlog.id);
+            });
+
+            ul.appendChild(li);
+        });
+
+        container.innerHTML = '';
+        container.appendChild(ul);
+    }
+
+    // 选择产品待办事项
+    function selectBacklogItem(element, backlogId) {
+        // 清除之前选中的节点样式
+        document.querySelectorAll('.backlog-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+
+        // 设置当前节点为选中状态
+        element.classList.add('selected');
+        selectedBacklogId = backlogId;
+
+        // 获取该需求的用户故事
+        fetch(`/get_user_stories_by_product_backlog/${backlogId}`)
+            .then(response => response.json())
+            .then(data => {
+                const storiesContainer = document.getElementById('user-stories-list');
+                if (data.success) {
+                    // 保存用户列表到全局变量
+                    window.userStoryUsers = data.users;
+                    renderUserStories(storiesContainer, data.user_stories);
+                } else {
+                    storiesContainer.innerHTML = '<p class="text-danger">加载失败: ' + data.message + '</p>';
+                }
+            })
+            .catch(error => {
+                const storiesContainer = document.getElementById('user-stories-list');
+                storiesContainer.innerHTML = '<p class="text-danger">加载失败: ' + error + '</p>';
+            });
+    }
+
+    // 渲染用户故事列表
+    function renderUserStories(container, stories) {
+        // 获取用户列表（从全局变量或通过其他方式传递）
+        const users = window.userStoryUsers || [];
+
+        if (!stories || stories.length === 0) {
+            container.innerHTML = `
+                <div class="text-center">
+                    <p class="text-muted">该需求下暂无用户故事</p>
+                    <button class="btn btn-primary" onclick="showAddStoryForm()">添加用户故事</button>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>用户故事列表</h5>
+                <button class="btn btn-primary" onclick="showAddStoryForm()">添加用户故事</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>故事编号</th>
+                            <th>故事标题</th>
+                            <th>故事描述</th>
+                            <th>优先级</th>
+                            <th>工作量</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        stories.forEach(story => {
+            html += `
+                <tr>
+                    <td>
+                        <a href="javascript:void(0)" onclick="editUserStory(${story.id})">${story.story_id}</a>
+                    </td>
+                    <td>
+                        ${story.title}
+                    </td>
+                    <td>
+                        ${story.description || ''}
+                    </td>
+                    <td>
+                        ${story.priority}
+                    </td>
+                    <td>
+                        ${story.effort}
+                    </td>
+                    <td>${story.created_at}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteUserStory(${story.id})">删除</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        container.innerHTML = html;
+    }
+
+    // 显示添加用户故事表单
+    function showAddStoryForm() {
+        if (!selectedBacklogId) {
+            alert('请先选择一个需求');
+            return;
+        }
+
+        // 显示模态框
+        document.getElementById('add-story-modal').style.display = 'block';
+
+        // 通过AJAX加载模态框内容
+        fetch(`/get_add_user_story_modal?product_backlog_id=${selectedBacklogId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('add-story-modal-content').innerHTML = html;
+        })
+        .catch(error => {
+            console.error('加载模态框内容失败:', error);
+            document.getElementById('add-story-modal-content').innerHTML =
+                '<div class="modal-header"><h5 class="modal-title">错误</h5><button type="button" class="btn-close" onclick="closeAddStoryModal()"></button></div>' +
+                '<div class="modal-body"><p>加载表单失败，请稍后重试。</p></div>' +
+                '<div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeAddStoryModal()">关闭</button></div>';
+        });
+    }
+
+    // 关闭添加用户故事模态框
+    function closeAddStoryModal() {
+        document.getElementById('add-story-modal').style.display = 'none';
+    }
+
+    // 保存用户故事
+    function saveUserStory() {
+        const form = document.getElementById('add-user-story-form');
+        const formData = new FormData(form);
+        const backlogId = selectedBacklogId; // 使用选中的需求ID
+        const currentBacklogId = selectedBacklogId; // 保存当前需求ID
+
+        fetch(`/add_user_story/${backlogId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('添加成功');
+                closeAddStoryModal();
+                // 清空表单
+                form.reset();
+                // 重新加载用户故事
+                if (currentBacklogId) {
+                    const selectedItem = document.querySelector('.backlog-item.selected');
+                    if (selectedItem) {
+                        selectBacklogItem(selectedItem, currentBacklogId);
+                    }
+                }
+            } else {
+                alert('添加失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('添加失败: ' + error);
+        });
+    }
+
+    // 编辑用户故事
+    function editUserStory(storyId) {
+        // 显示编辑模态框
+        document.getElementById('edit-story-modal').style.display = 'block';
+
+        // 通过AJAX加载模态框内容和用户故事数据
+        fetch(`/get_edit_user_story_modal/${storyId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('edit-story-modal-content').innerHTML = html;
+        })
+        .catch(error => {
+            console.error('加载模态框内容失败:', error);
+            document.getElementById('edit-story-modal-content').innerHTML =
+                '<div class="modal-header"><h5 class="modal-title">错误</h5><button type="button" class="btn-close" onclick="closeEditStoryModal()"></button></div>' +
+                '<div class="modal-body"><p>加载表单失败，请稍后重试。</p></div>' +
+                '<div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeEditStoryModal()">关闭</button></div>';
+        });
+    }
+
+    // 关闭编辑用户故事模态框
+    function closeEditStoryModal() {
+        document.getElementById('edit-story-modal').style.display = 'none';
+    }
+
+    // 保存编辑的用户故事
+    function saveEditedUserStory() {
+        const form = document.getElementById('edit-user-story-form');
+        const formData = new FormData(form);
+        const storyId = document.getElementById('edit-story-id').value;
+        const currentBacklogId = selectedBacklogId; // 保存当前需求ID
+
+        fetch(`/edit_user_story/${storyId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('保存成功');
+                closeEditStoryModal();
+                // 重新加载用户故事
+                if (currentBacklogId) {
+                    const selectedItem = document.querySelector('.backlog-item.selected');
+                    if (selectedItem) {
+                        selectBacklogItem(selectedItem, currentBacklogId);
+                    }
+                }
+            } else {
+                alert('保存失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('保存失败: ' + error);
+        });
+    }
+
+    // 删除用户故事
+    function deleteUserStory(storyId) {
+        if (!confirm('确定要删除该用户故事吗？')) {
+            return;
+        }
+
+        fetch(`/delete_user_story/${storyId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                // 重新加载当前需求的用户故事
+                if (selectedBacklogId) {
+                    const selectedItem = document.querySelector('.backlog-item.selected');
+                    if (selectedItem) {
+                        selectBacklogItem(selectedItem, selectedBacklogId);
+                    }
+                }
+            } else {
+                alert('删除失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('删除失败: ' + error);
+        });
+    }
+
+    // 导出用户故事到Excel
+    function exportToExcel() {
+        if (!selectedBacklogId) {
+            alert('请先选择一个需求');
+            return;
+        }
+
+        // 发起导出请求
+        window.location.href = `/export_user_stories_by_backlog/${selectedBacklogId}`;
+    }
+    </script>
+</head>
+<body class="bg-light">
+{% include 'navbar.html' %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">用户故事管理</h3>
+        <button class="btn btn-success" onclick="exportToExcel()">导出到Excel</button>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：需求筛选 -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">需求筛选</h5>
+                </div>
+                <div class="card-body">
+                    <!-- 项目筛选 -->
+                    <div class="mb-3">
+                        <label for="project-filter" class="form-label">所属项目</label>
+                        <select class="form-select" id="project-filter" onchange="onProjectChange()">
+                            <option value="">全部项目</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}{% if project.short_name %} ({{ project.short_name }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 状态筛选 -->
+                    <div class="mb-3">
+                        <label for="status-filter" class="form-label">需求状态</label>
+                        <select class="form-select" id="status-filter" onchange="onStatusChange()">
+                            <option value="">全部状态</option>
+                            <option value="待讨论">待讨论</option>
+                            <option value="已澄清">已澄清</option>
+                            <option value="已纳入冲刺">已纳入冲刺</option>
+                            <option value="已完成">已完成</option>
+                        </select>
+                    </div>
+
+                    <!-- 需求列表 -->
+                    <div id="backlog-list">
+                        <p class="text-muted">请选择筛选条件查看需求列表</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：用户故事列表 -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">用户故事</h5>
+                </div>
+                <div class="card-body">
+                    <div id="user-stories-list">
+                        <p class="text-muted">请选择一个需求查看用户故事</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加用户故事模态框 -->
+<div id="add-story-modal" class="modal" tabindex="-1" style="display: none; background-color: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+    <div class="modal-dialog">
+        <div class="modal-content" id="add-story-modal-content">
+            <!-- 模态框内容将通过AJAX加载 -->
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑用户故事模态框 -->
+<div id="edit-story-modal" class="modal" tabindex="-1" style="display: none; background-color: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+    <div class="modal-dialog">
+        <div class="modal-content" id="edit-story-modal-content">
+            <!-- 模态框内容将通过AJAX加载 -->
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

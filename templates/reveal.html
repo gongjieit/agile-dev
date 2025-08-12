@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>估算结果</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-5">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb breadcrumb-chevron">
+                <li class="breadcrumb-item"><a href="{{ url_for('auth.index') }}">首页</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('estimation.poker', round_id=round_id) }}">估算房间</a></li>
+                <li class="breadcrumb-item active" aria-current="page">估算结果</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">估算结果 - {{ user_story.title }}</h3>
+            <div>
+                <a href="{{ url_for('estimation.new_round', round_id=round_id) }}" class="btn btn-success me-2">开始下一轮</a>
+                <a href="{{ url_for('estimation.poker', user_story_id=user_story.id) }}" class="btn btn-primary me-2">返回房间</a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">团队估算结果</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% for estimate in estimates %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">{{ estimate.user.name }}</h6>
+                                        <div class="p-3 bg-success bg-opacity-10 rounded">
+                                            <span class="display-6 text-success">{{ estimate.card_value }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">统计信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>参与人数:</span>
+                            <strong>{{ estimates|length }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>平均值:</span>
+                            <strong>{{ average|round(1) }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>共识:</span>
+                            <strong>
+                                {% if consensus %}
+                                    <span class="text-success">是</span>
+                                {% else %}
+                                    <span class="text-danger">否</span>
+                                {% endif %}
+                            </strong>
+                        </div>
+                        <hr>
+                        <h6>数值分布</h6>
+                        {% for value, count in value_counts.items() %}
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>{{ value }}:</span>
+                            <span>{{ count }} 人</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

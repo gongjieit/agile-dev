@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试用例管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .filter-form {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .action-buttons {
+            margin-bottom: 20px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .status-badge {
+            font-size: 0.8em;
+        }
+
+        .priority-high {
+            background-color: #dc3545;
+        }
+
+        .priority-medium {
+            background-color: #ffc107;
+        }
+
+        .priority-low {
+            background-color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2>测试用例管理</h2>
+
+                <!-- 操作按钮 -->
+                <div class="action-buttons">
+                    <a href="{{ url_for('test_cases.add_test_case') }}" class="btn btn-primary">添加测试用例</a>
+                    <a href="{{ url_for('test_cases.import_test_cases') }}" class="btn btn-success">导入测试用例</a>
+                    <button class="btn btn-info" onclick="exportTestCases()">导出测试用例</button>
+                </div>
+
+                <!-- 筛选表单 -->
+                <div class="filter-form">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">搜索</label>
+                            <input type="text" class="form-control" id="search" name="search" value="{{ search }}" placeholder="用例编号或标题">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="project_id" class="form-label">项目</label>
+                            <select class="form-select" id="project_id" name="project_id">
+                                <option value="0">全部项目</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}" {% if project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="sprint_id" class="form-label">迭代</label>
+                            <select class="form-select" id="sprint_id" name="sprint_id">
+                                <option value="0">全部迭代</option>
+                                {% for sprint in sprints %}
+                                <option value="{{ sprint.id }}" {% if sprint_id == sprint.id %}selected{% endif %}>{{ sprint.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">筛选</button>
+                                <a href="{{ url_for('test_cases.test_cases') }}" class="btn btn-secondary">重置</a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 测试用例列表 -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>用例编号</th>
+                                <th>标题</th>
+                                <th>所属项目</th>
+                                <th>所属迭代</th>
+                                <th>用户故事</th>
+                                <th>编辑状态</th>
+                                <th>执行状态</th>
+                                <th>测试结果</th>
+                                <th>优先级</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if test_cases %}
+                                {% for case in test_cases %}
+                                <tr>
+                                    <td>{{ case.case_id or 'N/A' }}</td>
+                                    <td>{{ case.title }}</td>
+                                    <td>{{ case.project.name if case.project else 'N/A' }}</td>
+                                    <td>{{ case.sprint.name if case.sprint else 'N/A' }}</td>
+                                    <td>{{ case.user_story.title if case.user_story else 'N/A' }}</td>
+                                    <td>
+                                        {% if case.edit_status == '新增' %}
+                                            <span class="badge bg-primary">{{ case.edit_status }}</span>
+                                        {% elif case.edit_status == '修改' %}
+                                            <span class="badge bg-warning text-dark">{{ case.edit_status }}</span>
+                                        {% elif case.edit_status == '作废' %}
+                                            <span class="badge bg-danger">{{ case.edit_status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ case.edit_status or 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if case.execution_status == '未开始' %}
+                                            <span class="badge bg-secondary">{{ case.execution_status }}</span>
+                                        {% elif case.execution_status == '进行中' %}
+                                            <span class="badge bg-primary">{{ case.execution_status }}</span>
+                                        {% elif case.execution_status == '已完成' %}
+                                            <span class="badge bg-success">{{ case.execution_status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ case.execution_status or 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if case.test_result == '通过' %}
+                                            <span class="badge bg-success">{{ case.test_result }}</span>
+                                        {% elif case.test_result == '失败' %}
+                                            <span class="badge bg-danger">{{ case.test_result }}</span>
+                                        {% elif case.test_result == '阻塞' %}
+                                            <span class="badge bg-warning text-dark">{{ case.test_result }}</span>
+                                        {% elif case.test_result == '取消' %}
+                                            <span class="badge bg-secondary">{{ case.test_result }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ case.test_result or 'N/A' }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if case.priority == 'P0' or case.priority == 'P1' %}
+                                            <span class="badge bg-danger">{{ case.priority }}</span>
+                                        {% elif case.priority == 'P2' or case.priority == 'P3' %}
+                                            <span class="badge bg-warning text-dark">{{ case.priority }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success">{{ case.priority }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ case.created_at.strftime('%Y-%m-%d') if case.created_at else 'N/A' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('test_cases.edit_test_case', case_id=case.id) }}" class="btn btn-sm btn-primary">编辑</a>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteTestCase({{ case.id }})">删除</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="11" class="text-center">暂无测试用例数据</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 分页 -->
+                {% if pagination and pagination.pages > 1 %}
+                <nav aria-label="测试用例分页">
+                    <ul class="pagination justify-content-center">
+                        {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('test_cases.test_cases', page=pagination.prev_num, search=search, project_id=project_id, sprint_id=sprint_id) }}">上一页</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">上一页</span>
+                            </li>
+                        {% endif %}
+
+                        {% for page_num in pagination.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != pagination.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('test_cases.test_cases', page=page_num, search=search, project_id=project_id, sprint_id=sprint_id) }}">{{ page_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">…</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('test_cases.test_cases', page=pagination.next_num, search=search, project_id=project_id, sprint_id=sprint_id) }}">下一页</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">下一页</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 删除测试用例
+        function deleteTestCase(caseId) {
+            if (confirm('确定要删除这个测试用例吗？')) {
+                fetch(`/test_cases/delete/${caseId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('删除成功！');
+                        location.reload();
+                    } else {
+                        alert('删除失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('删除失败，请重试');
+                });
+            }
+        }
+
+        // 导出测试用例
+        function exportTestCases() {
+            const projectId = document.getElementById('project_id').value;
+            const sprintId = document.getElementById('sprint_id').value;
+
+            let url = '/test_cases/export';
+            const params = [];
+
+            if (projectId && projectId !== '0') {
+                params.push(`project_id=${projectId}`);
+            }
+
+            if (sprintId && sprintId !== '0') {
+                params.push(`sprint_id=${sprintId}`);
+            }
+
+            if (params.length > 0) {
+                url += '?' + params.join('&');
+            }
+
+            window.location.href = url;
+        }
+
+        // 项目选择变化事件
+        document.getElementById('project_id').addEventListener('change', function() {
+            const projectId = this.value;
+            const sprintSelect = document.getElementById('sprint_id');
+
+            // 清空迭代选择
+            sprintSelect.innerHTML = '<option value="0">全部迭代</option>';
+
+            if (projectId && projectId !== '0') {
+                // 获取项目下的迭代
+                fetch(`/test_cases/get_sprints?project_id=${projectId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 添加新的迭代选项
+                            data.sprints.forEach(sprint => {
+                                const option = document.createElement('option');
+                                option.value = sprint.id;
+                                option.textContent = sprint.name;
+                                sprintSelect.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+
+                // 获取项目下的用户故事
+                fetch(`/test_cases/get_user_stories?project_id=${projectId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // 这里可以处理用户故事数据，但目前不需要更新UI
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }
+        });
+
+    </script>
+</body>
+</html>

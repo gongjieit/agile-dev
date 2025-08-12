@@ -1,0 +1,96 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('auth.index') }}">敏捷开发平台</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                {% if session.user_id %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('auth.index') }}">首页</a>
+                </li>
+                {% if session.get('features', {}) and session.features.get('projects.projects') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('projects.projects') }}">项目管理</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('product_backlog.product_backlog') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('product_backlog.product_backlog') }}">需求管理</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('user_stories.user_stories') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('user_stories.user_stories') }}">用户故事</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('sprints.sprints') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('sprints.sprints') }}">迭代管理</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('tasks.tasks') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('tasks.tasks') }}">任务管理</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('test_cases.test_cases') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('test_cases.test_cases') }}">测试用例</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('kanban.kanban') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('kanban.kanban') }}">敏捷看板</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('estimation.estimate') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('estimation.estimate') }}">敏捷扑克</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('admin.history') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin.history') }}">估算历史</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('users.users') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('users.users') }}">用户管理</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('roles.roles') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('roles.roles') }}">角色管理</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('knowledge.manage') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('knowledge.knowledge') }}">知识管理</a>
+                </li>
+                {% endif %}
+                {% if session.get('features', {}) and session.features.get('knowledge.knowledge_view') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('knowledge.knowledge_view') }}">知识库</a>
+                </li>
+                {% endif %}
+                {% endif %}
+            </ul>
+            <ul class="navbar-nav">
+                {% if session.user_id %}
+                <li class="nav-item">
+                    <span class="navbar-text me-3">欢迎, {{ session.username }}!</span>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('auth.logout') }}">退出</a>
+                </li>
+                {% else %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('auth.login') }}">登录</a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>

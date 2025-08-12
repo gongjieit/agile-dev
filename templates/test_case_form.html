@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if action == 'add' %}添加测试用例{% else %}编辑测试用例{% endif %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2>{% if action == 'add' %}添加测试用例{% else %}编辑测试用例{% endif %}</h2>
+
+                <form method="POST" id="test-case-form">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>基本信息</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if action == 'edit' %}
+                                    <div class="mb-3">
+                                        <label for="case_id" class="form-label">用例编号</label>
+                                        <input type="text" class="form-control" id="case_id" name="case_id" value="{{ test_case.case_id or '' }}" readonly>
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="mb-3">
+                                        <label for="project_id" class="form-label">所属项目 *</label>
+                                        <select class="form-select" id="project_id" name="project_id" required>
+                                            <option value="">请选择项目</option>
+                                            {% for project in projects %}
+                                            <option value="{{ project.id }}" {% if (action == 'edit' and test_case.project_id == project.id) or (action == 'add' and project_id == project.id) %}selected{% endif %}>{{ project.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="sprint_id" class="form-label">所属迭代</label>
+                                        <select class="form-select" id="sprint_id" name="sprint_id">
+                                            <option value="">请选择迭代</option>
+                                            {% for sprint in sprints %}
+                                            <option value="{{ sprint.id }}" {% if action == 'edit' and test_case.sprint_id == sprint.id %}selected{% endif %}>{{ sprint.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="user_story_id" class="form-label">用户故事</label>
+                                        <select class="form-select" id="user_story_id" name="user_story_id">
+                                            <option value="">请选择用户故事</option>
+                                            {% for story in user_stories %}
+                                            <option value="{{ story.id }}" {% if action == 'edit' and test_case.user_story_id == story.id %}selected{% endif %}>{{ story.story_id }} - {{ story.title }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label">用例标题 *</label>
+                                        <input type="text" class="form-control" id="title" name="title" value="{{ test_case.title if action == 'edit' else '' }}" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="case_type" class="form-label">测试用例类型</label>
+                                        <select class="form-select" id="case_type" name="case_type">
+                                            <option value="">请选择类型</option>
+                                            <option value="页面验证" {% if action == 'edit' and test_case.case_type == '页面验证' %}selected{% endif %}>页面验证</option>
+                                            <option value="功能验证" {% if action == 'edit' and test_case.case_type == '功能验证' %}selected{% endif %}>功能验证</option>
+                                            <option value="数据验证" {% if action == 'edit' and test_case.case_type == '数据验证' %}selected{% endif %}>数据验证</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="function_point" class="form-label">具体功能点</label>
+                                        <select class="form-select" id="function_point" name="function_point">
+                                            <option value="">请选择功能点</option>
+                                            <option value="查询" {% if action == 'edit' and test_case.function_point == '查询' %}selected{% endif %}>查询</option>
+                                            <option value="查询条件" {% if action == 'edit' and test_case.function_point == '查询条件' %}selected{% endif %}>查询条件</option>
+                                            <option value="编辑" {% if action == 'edit' and test_case.function_point == '编辑' %}selected{% endif %}>编辑</option>
+                                            <option value="重置" {% if action == 'edit' and test_case.function_point == '重置' %}selected{% endif %}>重置</option>
+                                            <option value="删除" {% if action == 'edit' and test_case.function_point == '删除' %}selected{% endif %}>删除</option>
+                                            <option value="数据列表" {% if action == 'edit' and test_case.function_point == '数据列表' %}selected{% endif %}>数据列表</option>
+                                            <option value="图表数据" {% if action == 'edit' and test_case.function_point == '图表数据' %}selected{% endif %}>图表数据</option>
+                                            <option value="图表样式" {% if action == 'edit' and test_case.function_point == '图表样式' %}selected{% endif %}>图表样式</option>
+                                            <option value="排序" {% if action == 'edit' and test_case.function_point == '排序' %}selected{% endif %}>排序</option>
+                                            <option value="分页" {% if action == 'edit' and test_case.function_point == '分页' %}selected{% endif %}>分页</option>
+                                            <option value="导出" {% if action == 'edit' and test_case.function_point == '导出' %}selected{% endif %}>导出</option>
+                                            <option value="导入" {% if action == 'edit' and test_case.function_point == '导入' %}selected{% endif %}>导入</option>
+                                            <option value="下载" {% if action == 'edit' and test_case.function_point == '下载' %}selected{% endif %}>下载</option>
+                                            <option value="上传" {% if action == 'edit' and test_case.function_point == '上传' %}selected{% endif %}>上传</option>
+                                            <option value="打印" {% if action == 'edit' and test_case.function_point == '打印' %}selected{% endif %}>打印</option>
+                                            <option value="分享" {% if action == 'edit' and test_case.function_point == '分享' %}selected{% endif %}>分享</option>
+                                            <option value="收藏" {% if action == 'edit' and test_case.function_point == '收藏' %}selected{% endif %}>收藏</option>
+                                            <option value="点赞" {% if action == 'edit' and test_case.function_point == '点赞' %}selected{% endif %}>点赞</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="priority" class="form-label">优先级</label>
+                                        <select class="form-select" id="priority" name="priority">
+                                            <option value="P0" {% if action == 'edit' and test_case.priority == 'P0' %}selected{% endif %}>P0 - 最高</option>
+                                            <option value="P1" {% if action == 'edit' and test_case.priority == 'P1' %}selected{% endif %}>P1 - 很高</option>
+                                            <option value="P2" {% if action == 'edit' and test_case.priority == 'P2' %}selected{% endif %}>P2 - 高</option>
+                                            <option value="P3" {% if (action == 'edit' and test_case.priority == 'P3') or (action == 'add') %}selected{% endif %}>P3 - 中</option>
+                                            <option value="P4" {% if action == 'edit' and test_case.priority == 'P4' %}selected{% endif %}>P4- 低</option>
+                                            <option value="P5" {% if action == 'edit' and test_case.priority == 'P5' %}selected{% endif %}>P5 - 最低</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="is_automated" name="is_automated" {% if action == 'edit' and test_case.is_automated %}checked{% endif %}>
+                                        <label class="form-check-label" for="is_automated">是否自动化</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>执行信息</h5>
+                                </div>
+                                <div class="card-body">
+                                    {% if action == 'edit' %}
+                                    <div class="mb-3">
+                                        <label for="edit_status" class="form-label">用例编辑状态</label>
+                                        <select class="form-select" id="edit_status" name="edit_status">
+                                            <option value="新增" {% if test_case.edit_status == '新增' %}selected{% endif %}>新增</option>
+                                            <option value="修改" {% if test_case.edit_status == '修改' %}selected{% endif %}>修改</option>
+                                            <option value="作废" {% if test_case.edit_status == '作废' %}selected{% endif %}>作废</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="execution_status" class="form-label">用例执行状态</label>
+                                        <select class="form-select" id="execution_status" name="execution_status">
+                                            <option value="未开始" {% if test_case.execution_status == '未开始' %}selected{% endif %}>未开始</option>
+                                            <option value="进行中" {% if test_case.execution_status == '进行中' %}selected{% endif %}>进行中</option>
+                                            <option value="已完成" {% if test_case.execution_status == '已完成' %}selected{% endif %}>已完成</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="test_result" class="form-label">测试结果</label>
+                                        <select class="form-select" id="test_result" name="test_result">
+                                            <option value="">请选择结果</option>
+                                            <option value="通过" {% if test_case.test_result == '通过' %}selected{% endif %}>通过</option>
+                                            <option value="失败" {% if test_case.test_result == '失败' %}selected{% endif %}>失败</option>
+                                            <option value="阻塞" {% if test_case.test_result == '阻塞' %}selected{% endif %}>阻塞</option>
+                                            <option value="取消" {% if test_case.test_result == '取消' %}selected{% endif %}>取消</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="tested_by_id" class="form-label">测试人</label>
+                                        <select class="form-select" id="tested_by_id" name="tested_by_id">
+                                            <option value="">请选择测试人</option>
+                                            {% for user in users %}
+                                            <option value="{{ user.id }}" {% if action == 'edit' and test_case.tested_by_id == user.id %}selected{% endif %}>{{ user.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="tested_at" class="form-label">测试时间</label>
+                                        <input type="date" class="form-control" id="tested_at" name="tested_at" value="{{ test_case.tested_at.strftime('%Y-%m-%d') if action == 'edit' and test_case.tested_at else '' }}">
+                                    </div>
+                                    {% endif %}
+
+                                    <div class="mb-3">
+                                        <label for="remarks" class="form-label">备注</label>
+                                        <textarea class="form-control" id="remarks" name="remarks" rows="3">{{ test_case.remarks if action == 'edit' else '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>测试步骤</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="precondition" class="form-label">预置条件</label>
+                                        <textarea class="form-control" id="precondition" name="precondition" rows="3">{{ test_case.precondition if action == 'edit' else '' }}</textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="steps" class="form-label">测试步骤</label>
+                                        <textarea class="form-control" id="steps" name="steps" rows="5">{{ test_case.steps if action == 'edit' else '' }}</textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="expected_result" class="form-label">预期结果</label>
+                                        <textarea class="form-control" id="expected_result" name="expected_result" rows="3">{{ test_case.expected_result if action == 'edit' else '' }}</textarea>
+                                    </div>
+
+                                    {% if action == 'edit' %}
+                                    <div class="mb-3">
+                                        <label for="actual_result" class="form-label">实际结果</label>
+                                        <textarea class="form-control" id="actual_result" name="actual_result" rows="3">{{ test_case.actual_result if action == 'edit' else '' }}</textarea>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="test_environment" class="form-label">测试环境</label>
+                                        <input type="text" class="form-control" id="test_environment" name="test_environment" value="{{ test_case.test_environment if action == 'edit' else '' }}">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">保存</button>
+                        <a href="{{ url_for('test_cases.test_cases') }}" class="btn btn-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 项目选择变化事件
+        document.getElementById('project_id').addEventListener('change', function() {
+            const projectId = this.value;
+            const sprintSelect = document.getElementById('sprint_id');
+            const userStorySelect = document.getElementById('user_story_id');
+
+            // 清空迭代和用户故事选择
+            sprintSelect.innerHTML = '<option value="">请选择迭代</option>';
+            userStorySelect.innerHTML = '<option value="">请选择用户故事</option>';
+
+            if (projectId) {
+                // 获取项目下的迭代
+                fetch(`/test_cases/get_sprints_by_project?project_id=${projectId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Sprints API Response:', data); // 调试信息
+                        if (data.success) {
+                            data.sprints.forEach(sprint => {
+                                const option = document.createElement('option');
+                                option.value = sprint.id;
+                                option.textContent = sprint.name;
+                                sprintSelect.appendChild(option);
+                            });
+                        } else {
+                            console.error('API Error:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }
+        });
+
+        // 迭代选择变化事件
+        document.getElementById('sprint_id').addEventListener('change', function() {
+            const sprintId = this.value;
+            const userStorySelect = document.getElementById('user_story_id');
+
+            // 清空用户故事选择
+            userStorySelect.innerHTML = '<option value="">请选择用户故事</option>';
+
+            if (sprintId) {
+                // 获取迭代下的用户故事
+                fetch(`/test_cases/get_user_stories_by_sprint?sprint_id=${sprintId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('API Response:', data); // 调试信息
+                        if (data.success) {
+                            data.user_stories.forEach(story => {
+                                const option = document.createElement('option');
+                                option.value = story.id;
+                                option.textContent = `${story.story_id} - ${story.title}`;
+                                userStorySelect.appendChild(option);
+                            });
+                        } else {
+                            console.error('API Error:', data.message);
+                            // 显示错误信息
+                            const option = document.createElement('option');
+                            option.textContent = `加载失败: ${data.message}`;
+                            option.disabled = true;
+                            userStorySelect.appendChild(option);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        // 显示错误信息
+                        const option = document.createElement('option');
+                        option.textContent = '加载用户故事失败，请重试';
+                        option.disabled = true;
+                        userStorySelect.appendChild(option);
+                    });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>敏捷看板</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <script src="{{ url_for('static', filename='chart.js') }}"></script>
+    <style>
+        .kanban-board {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding: 20px 10px;
+            min-height: 70vh;
+        }
+
+        .kanban-column {
+            min-width: 300px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+        }
+
+        .kanban-column-header {
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .kanban-tasks {
+            padding: 10px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        .kanban-task {
+            background: white;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+            /* 添加拖拽相关样式 */
+            user-select: none;
+            width: 100%;
+            word-wrap: break-word;
+            overflow: hidden;
+        }
+
+        .kanban-task:hover {
+            box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+        }
+
+        .kanban-task .task-header {
+            font-size: 0.75rem;
+            margin-bottom: 5px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .kanban-task .task-name {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+        }
+
+        .kanban-task .task-id {
+            font-weight: bold;
+            color: #6c757d;
+            font-size: 0.75rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .kanban-task .task-assignee {
+            color: #007bff;
+            font-size: 0.75rem;
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .kanban-task .task-story {
+            font-size: 0.75rem;
+            color: #6c757d;
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .kanban-task .task-type {
+            font-size: 0.75rem;
+            font-weight: normal;
+        }
+
+        .kanban-task .task-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            padding-top: 3px;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+        }
+
+        .task-priority {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .priority-high {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .priority-medium {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .priority-low {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-not-started {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+
+        .status-in-progress {
+            background-color: #cce7ff;
+            color: #004085;
+        }
+
+        .status-done {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .sprint-selector {
+            max-width: 300px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        /* 信息项样式 */
+        .info-item-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .info-item-value {
+            color: #212529;
+        }
+
+        /* 状态选择器样式 */
+        .status-select {
+            display: inline-block;
+            width: auto;
+            min-width: 100px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            border-radius: 0.2rem;
+        }
+
+        /* 提示消息样式 */
+        .alert {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* 任务详情中的状态行 */
+        .status-row {
+            display: flex;
+            align-items: center;
+        }
+
+        .status-label {
+            margin-right: 10px;
+            margin-bottom: 0;
+        }
+
+        /* 拖拽相关样式 */
+        .kanban-task.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+        }
+
+        .kanban-tasks.drag-over {
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+
+        .task-dates {
+            margin-top: 8px;
+            padding-top: 5px;
+            border-top: 1px dashed #eee;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+        }
+
+        .task-dates small {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .date-item {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">敏捷看板</h3>
+            <div class="sprint-selector">
+                <select class="form-select" id="sprint-select">
+                    <option value="">选择迭代</option>
+                    {% for sprint in sprints %}
+                    <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Tab导航 -->
+        <ul class="nav nav-tabs mb-4" id="kanbanTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">概览</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="kanban-tab" data-bs-toggle="tab" data-bs-target="#kanban" type="button" role="tab" aria-controls="kanban" aria-selected="false">敏捷看板</button>
+            </li>
+        </ul>
+
+        <!-- Tab内容 -->
+        <div class="tab-content" id="kanbanTabContent">
+            <!-- 概览Tab -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+                <!-- 项目迭代信息和燃尽图容器 -->
+                <div id="info-and-chart-container" class="row mb-4" style="display: none;">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">项目与迭代信息</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <h6 class="border-bottom pb-2 mb-3">项目信息</h6>
+                                        <div class="row mb-2">
+                                            <div class="col-6 fw-bold">项目名称:</div>
+                                            <div class="col-6" id="project-name"></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-6 fw-bold">项目简称:</div>
+                                            <div class="col-6" id="project-description"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-12">
+                                        <h6 class="border-bottom pb-2 mb-3">迭代信息</h6>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">迭代名称:</div>
+                                            <div class="col-8" id="sprint-name"></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">开始日期:</div>
+                                            <div class="col-8" id="sprint-start-date"></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">结束日期:</div>
+                                            <div class="col-8" id="sprint-end-date"></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">状态:</div>
+                                            <div class="col-8" id="sprint-status"></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">产品负责人:</div>
+                                            <div class="col-8" id="product-owner"></div>
+                                        </div>
+                                        <div class="row mb-2">
+                                            <div class="col-4 fw-bold">Scrum Master:</div>
+                                            <div class="col-8" id="scrum-master"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">迭代燃尽图</h5>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="chart-container">
+                                    <canvas id="burndown-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 敏捷看板Tab -->
+            <div class="tab-pane fade" id="kanban" role="tabpanel" aria-labelledby="kanban-tab">
+                <div id="kanban-container">
+                    <p class="text-muted text-center">请选择一个迭代查看看板</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务详情模态框 -->
+    <div class="modal fade" id="taskDetailModal" tabindex="-1" aria-labelledby="taskDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskDetailModalLabel">任务详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="task-detail-content">
+                    <!-- 任务详情将通过AJAX加载 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 当前选中的迭代ID
+        let currentSprintId = null;
+        // 燃尽图实例
+        let burndownChart = null;
+        // 当前筛选的负责人ID
+        let currentAssigneeFilter = 'all';
+
+        // 迭代选择变化事件
+        document.getElementById('sprint-select').addEventListener('change', function() {
+            const sprintId = this.value;
+            const kanbanContainer = document.getElementById('kanban-container');
+            const infoAndChartContainer = document.getElementById('info-and-chart-container');
+
+            currentSprintId = sprintId;
+            // 重置筛选器
+            currentAssigneeFilter = 'all';
+
+            if (!sprintId) {
+                kanbanContainer.innerHTML = '<p class="text-muted text-center">请选择一个迭代查看看板</p>';
+                infoAndChartContainer.style.display = 'none';
+                return;
+            }
+
+            // 显示加载状态
+            kanbanContainer.innerHTML = '<p class="text-muted text-center">加载中...</p>';
+            infoAndChartContainer.style.display = 'none';
+
+            // 获取看板数据
+            fetch(`/get_kanban_data/${sprintId}`)
+                .then(response => {
+                    // 检查响应是否为JSON格式
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('服务器返回了非JSON响应');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // 渲染看板（仅当看板Tab处于激活状态时）
+                        const kanbanTab = document.getElementById('kanban-tab');
+                        if (kanbanTab.classList.contains('active')) {
+                            renderKanbanBoard(kanbanContainer, data.columns, data.tasks, data.users);
+                        }
+
+                        // 渲染概览信息（仅当概览Tab处于激活状态时）
+                        const overviewTab = document.getElementById('overview-tab');
+                        if (overviewTab.classList.contains('active')) {
+                            renderSprintInfo(data.project_info, data.sprint_info);
+                            renderBurndownChart(data.burndown_data, data.sprint_info);
+                            infoAndChartContainer.style.display = 'flex';
+                        }
+
+                        // 存储数据以便在Tab切换时使用
+                        window.kanbanData = data;
+                    } else {
+                        kanbanContainer.innerHTML = '<p class="text-danger text-center">加载失败: ' + data.message + '</p>';
+                        infoAndChartContainer.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    kanbanContainer.innerHTML = '<p class="text-danger text-center">加载失败: ' + error + '</p>';
+                    infoAndChartContainer.style.display = 'none';
+                });
+        });
+
+        // Tab切换事件
+        document.addEventListener('DOMContentLoaded', function() {
+            // 概览Tab激活事件
+            document.getElementById('overview-tab').addEventListener('shown.bs.tab', function (e) {
+                if (currentSprintId && window.kanbanData) {
+                    renderSprintInfo(window.kanbanData.project_info, window.kanbanData.sprint_info);
+                    renderBurndownChart(window.kanbanData.burndown_data, window.kanbanData.sprint_info);
+                    document.getElementById('info-and-chart-container').style.display = 'flex';
+                }
+            });
+
+            // 敏捷看板Tab激活事件
+            document.getElementById('kanban-tab').addEventListener('shown.bs.tab', function (e) {
+                const kanbanContainer = document.getElementById('kanban-container');
+                if (currentSprintId && window.kanbanData) {
+                    renderKanbanBoard(kanbanContainer, window.kanbanData.columns, window.kanbanData.tasks, window.kanbanData.users);
+                } else if (currentSprintId) {
+                    // 如果有选中的迭代但没有数据，重新加载
+                    kanbanContainer.innerHTML = '<p class="text-muted text-center">加载中...</p>';
+                    fetch(`/get_kanban_data/${currentSprintId}`)
+                        .then(response => {
+                            // 检查响应是否为JSON格式
+                            const contentType = response.headers.get('content-type');
+                            if (!contentType || !contentType.includes('application/json')) {
+                                throw new Error('服务器返回了非JSON响应');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                renderKanbanBoard(kanbanContainer, data.columns, data.tasks, data.users);
+                                window.kanbanData = data;
+                            } else {
+                                kanbanContainer.innerHTML = '<p class="text-danger text-center">加载失败: ' + data.message + '</p>';
+                            }
+                        })
+                        .catch(error => {
+                            kanbanContainer.innerHTML = '<p class="text-danger text-center">加载失败: ' + error + '</p>';
+                        });
+                }
+            });
+        });
+
+        // 渲染项目和迭代信息
+        function renderSprintInfo(projectInfo, sprintInfo) {
+            // 更新项目信息
+            if (projectInfo) {
+                document.getElementById('project-name').textContent = projectInfo.name || '未指定';
+                document.getElementById('project-description').textContent = projectInfo.description || '无描述';
+            } else {
+                document.getElementById('project-name').textContent = '未指定';
+                document.getElementById('project-description').textContent = '无描述';
+            }
+
+            // 更新迭代信息
+            document.getElementById('sprint-name').textContent = sprintInfo.name || '未指定';
+            document.getElementById('sprint-start-date').textContent = sprintInfo.start_date || '未指定';
+            document.getElementById('sprint-end-date').textContent = sprintInfo.end_date || '未指定';
+            document.getElementById('sprint-status').textContent = sprintInfo.status || '未指定';
+            document.getElementById('product-owner').textContent = sprintInfo.product_owner || '未指定';
+            document.getElementById('scrum-master').textContent = sprintInfo.scrum_master || '未指定';
+        }
+
+        // 渲染燃尽图
+        function renderBurndownChart(burndownData, sprintInfo) {
+            const ctx = document.getElementById('burndown-chart').getContext('2d');
+
+            // 如果已有图表实例，先销毁
+            if (burndownChart) {
+                burndownChart.destroy();
+            }
+
+            // 解析燃尽图数据
+            const dates = burndownData.map(item => item.date);
+            const remainingPoints = burndownData.map(item => item.remaining_points);
+            const idealPoints = burndownData.map(item => item.ideal_points);
+
+            burndownChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: '剩余故事点',
+                            data: remainingPoints,
+                            borderColor: 'rgb(255, 99, 132)',
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderWidth: 2,
+                            fill: false,
+                            tension: 0.1
+                        },
+                        {
+                            label: '理想燃尽线',
+                            data: idealPoints,
+                            borderColor: 'rgb(54, 162, 235)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '故事点'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: '日期'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: false  // 隐藏图表标题，因为卡片头部已显示
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 渲染看板
+        function renderKanbanBoard(container, columns, tasks, users) {
+            // 创建筛选器HTML
+            let filterHtml = `
+                <div class="mb-3">
+                    <label for="assignee-filter" class="form-label">按负责人筛选:</label>
+                    <select id="assignee-filter" class="form-select" style="width: auto; display: inline-block;">
+                        <option value="all">全部任务</option>
+                        <option value="unassigned">未分配</option>
+            `;
+
+            // 添加所有负责人选项
+            users.forEach(user => {
+                const selected = currentAssigneeFilter === user.id.toString() ? 'selected' : '';
+                filterHtml += `<option value="${user.id}" ${selected}>${user.name}</option>`;
+            });
+
+            filterHtml += `
+                    </select>
+                </div>
+            `;
+
+            // 按状态分组任务
+            const tasksByStatus = {};
+            columns.forEach(column => {
+                tasksByStatus[column.status] = [];
+            });
+
+            // 根据筛选条件过滤任务
+            const filteredTasks = tasks.filter(task => {
+                if (currentAssigneeFilter === 'all') {
+                    return true;
+                } else if (currentAssigneeFilter === 'unassigned') {
+                    return !task.assignee_id;
+                } else {
+                    return task.assignee_id === parseInt(currentAssigneeFilter);
+                }
+            });
+
+            filteredTasks.forEach(task => {
+                if (tasksByStatus.hasOwnProperty(task.status)) {
+                    tasksByStatus[task.status].push(task);
+                }
+            });
+
+            // 创建看板HTML
+            let kanbanHtml = filterHtml + '<div class="kanban-board">';
+
+            columns.forEach(column => {
+                kanbanHtml += `
+                    <div class="kanban-column">
+                        <div class="kanban-column-header status-${getStatusClass(column.status)}">
+                            ${column.name} (${tasksByStatus[column.status].length})
+                        </div>
+                        <div class="kanban-tasks" id="tasks-${column.status}" data-status="${column.status}">
+                `;
+
+                // 添加该列的任务
+                tasksByStatus[column.status].forEach(task => {
+                    kanbanHtml += `
+                        <div class="kanban-task" data-task-id="${task.id}" draggable="true">
+                            <div class="task-header d-flex justify-content-between">
+                                <div class="task-id">${task.task_id || '未编号'}</div>
+                                <div class="task-assignee text-end">${task.assignee_name || '未分配'}</div>
+                            </div>
+                            <div class="task-name mt-1 mb-2">${task.name}</div>
+                            <div class="task-meta d-flex justify-content-between">
+                                <span class="task-story">${task.story_title}</span>
+                                ${task.task_type ? `<span class="task-type badge bg-info">${task.task_type}</span>` : ''}
+                                <span class="task-priority ${getPriorityClass(task.priority)}">${task.priority}</span>
+                            </div>
+                            <div class="task-dates d-flex justify-content-between">
+                                <small class="text-muted date-item">开始: ${task.start_date || '未设置'}</small>
+                                <small class="text-muted date-item ms-2">结束: ${task.end_date || '未设置'}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                kanbanHtml += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            kanbanHtml += '</div>';
+
+            container.innerHTML = kanbanHtml;
+
+            // 绑定筛选器事件
+            const filterElement = document.getElementById('assignee-filter');
+            if (filterElement) {
+                filterElement.addEventListener('change', function() {
+                    currentAssigneeFilter = this.value;
+                    renderKanbanBoard(container, columns, tasks, users);
+                });
+            }
+
+            // 绑定任务点击事件
+            document.querySelectorAll('.kanban-task').forEach(taskElement => {
+                taskElement.addEventListener('click', function() {
+                    const taskId = this.dataset.taskId;
+                    showTaskDetail(taskId);
+                });
+            });
+
+            // 绑定拖拽事件
+            initDragAndDrop();
+        }
+
+        // 初始化拖拽功能
+        function initDragAndDrop() {
+            const tasks = document.querySelectorAll('.kanban-task');
+            const taskColumns = document.querySelectorAll('.kanban-tasks');
+
+            tasks.forEach(task => {
+                task.addEventListener('dragstart', dragStart);
+                task.addEventListener('dragend', dragEnd);
+            });
+
+            taskColumns.forEach(column => {
+                column.addEventListener('dragover', dragOver);
+                column.addEventListener('dragenter', dragEnter);
+                column.addEventListener('dragleave', dragLeave);
+                column.addEventListener('drop', dragDrop);
+            });
+        }
+
+        // 拖拽开始
+        function dragStart(e) {
+            this.classList.add('dragging');
+            // 保存被拖拽的任务元素和原始状态
+            window.draggedTask = this;
+            window.originalStatus = this.parentElement.dataset.status;
+
+            // 设置拖拽效果
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        // 拖拽结束
+        function dragEnd() {
+            this.classList.remove('dragging');
+        }
+
+        // 拖拽经过目标区域
+        function dragOver(e) {
+            e.preventDefault();
+            // 设置放置效果
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        // 拖拽进入目标区域
+        function dragEnter(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+
+        // 拖拽离开目标区域
+        function dragLeave() {
+            this.classList.remove('drag-over');
+        }
+
+        // 拖拽放置
+        function dragDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            this.classList.remove('drag-over');
+
+            // 如果不是同一列才需要更新状态
+            const targetStatus = this.dataset.status;
+            const originalStatus = window.draggedTask.parentElement.dataset.status;
+
+            if (targetStatus !== originalStatus) {
+                // 更新任务状态
+                updateTaskStatus(window.draggedTask.dataset.taskId, targetStatus);
+            } else {
+                // 如果在同一列，只需移动DOM元素
+                this.appendChild(window.draggedTask);
+            }
+
+            return false;
+        }
+
+        // 获取状态CSS类
+        function getStatusClass(status) {
+            switch (status) {
+                case '未开始':
+                    return 'not-started';
+                case '进行中':
+                    return 'in-progress';
+                case '已完成':
+                    return 'done';
+                default:
+                    return '';
+            }
+        }
+
+        // 获取优先级CSS类
+        function getPriorityClass(priority) {
+            switch (priority) {
+                case '高':
+                    return 'priority-high';
+                case '中':
+                    return 'priority-medium';
+                case '低':
+                    return 'priority-low';
+                default:
+                    return '';
+            }
+        }
+
+        // 显示任务详情
+        function showTaskDetail(taskId) {
+            const modal = new bootstrap.Modal(document.getElementById('taskDetailModal'));
+            const detailContent = document.getElementById('task-detail-content');
+
+            // 显示加载状态
+            detailContent.innerHTML = '<p class="text-center">加载中...</p>';
+            modal.show();
+
+            // 获取任务详情
+            fetch(`/get_task_detail/${taskId}`)
+                .then(response => {
+                    // 检查响应是否为JSON格式
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('服务器返回了非JSON响应');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        detailContent.innerHTML = `
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h5>${data.task.name}</h5>
+                                    <p><strong>任务编号:</strong> ${data.task.task_id || '未编号'}</p>
+                                    <p><strong>所属用户故事:</strong> ${data.task.story_title}</p>
+                                    <p><strong>任务描述:</strong></p>
+                                    <p>${data.task.description || '无描述'}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="d-flex align-items-center">
+                                        <strong class="me-2">状态:</strong>
+                                        <select class="form-select form-select-sm status-select d-inline-block" style="width: auto; min-width: 100px;" data-task-id="${data.task.id}">
+                                            <option value="未开始" ${data.task.status === '未开始' ? 'selected' : ''}>未开始</option>
+                                            <option value="进行中" ${data.task.status === '进行中' ? 'selected' : ''}>进行中</option>
+                                            <option value="已完成" ${data.task.status === '已完成' ? 'selected' : ''}>已完成</option>
+                                        </select>
+                                    </p>
+                                    <p><strong>优先级:</strong> <span class="badge ${getPriorityClass(data.task.priority)}">${data.task.priority}</span></p>
+                                    <p><strong>任务类型:</strong> ${data.task.task_type || '未指定'}</p>
+                                    <p class="d-flex align-items-center">
+                                        <strong class="me-2">负责人:</strong>
+                                        <select class="form-select form-select-sm assignee-select d-inline-block" style="width: auto; min-width: 100px;" data-task-id="${data.task.id}">
+                                            <option value="">未分配</option>
+                                            ${window.kanbanData.users.map(user =>
+                                                `<option value="${user.id}" ${data.task.assignee_id === user.id ? 'selected' : ''}>${user.name}</option>`
+                                            ).join('')}
+                                        </select>
+                                    </p>
+                                    <p><strong>开始日期:</strong> ${data.task.start_date || '未指定'}</p>
+                                    <p><strong>结束日期:</strong> ${data.task.end_date || '未指定'}</p>
+                                    <p><strong>创建时间:</strong> ${data.task.created_at || ''}</p>
+                                </div>
+                            </div>
+                        `;
+
+                        // 绑定状态选择事件
+                        const statusSelect = document.querySelector('.status-select');
+                        statusSelect.addEventListener('change', function() {
+                            const taskId = this.dataset.taskId;
+                            const newStatus = this.value;
+                            updateTaskStatus(taskId, newStatus);
+                        });
+
+                        // 绑定负责人选择事件
+                        const assigneeSelect = document.querySelector('.assignee-select');
+                        assigneeSelect.addEventListener('change', function() {
+                            const taskId = this.dataset.taskId;
+                            const newAssigneeId = this.value || '';
+                            updateTaskAssignee(taskId, newAssigneeId);
+                        });
+                    } else {
+                        detailContent.innerHTML = '<p class="text-danger">加载失败: ' + data.message + '</p>';
+                    }
+                })
+                .catch(error => {
+                    detailContent.innerHTML = '<p class="text-danger">加载失败: ' + error + '</p>';
+                });
+        }
+
+
+        // 更新任务状态
+        function updateTaskStatus(taskId, newStatus) {
+            // 显示加载状态
+            const statusSelect = document.querySelector('.status-select');
+            if (statusSelect) {
+                const originalStatus = statusSelect.value;
+                statusSelect.disabled = true;
+            }
+
+            // 发送请求更新任务状态
+            fetch(`/edit_task/${taskId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `status=${encodeURIComponent(newStatus)}&_method=PUT`
+            })
+            .then(response => {
+                // 检查响应是否为JSON格式
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON响应');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (statusSelect) {
+                    statusSelect.disabled = false;
+                }
+
+                if (data.success) {
+                    // 显示成功消息
+                    showAlert('任务状态更新成功', 'success');
+
+                    // 重新加载看板数据
+                    if (currentSprintId) {
+                        fetch(`/get_kanban_data/${currentSprintId}`)
+                            .then(response => {
+                                // 检查响应是否为JSON格式
+                                const contentType = response.headers.get('content-type');
+                                if (!contentType || !contentType.includes('application/json')) {
+                                    throw new Error('服务器返回了非JSON响应');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.success) {
+                                    const kanbanContainer = document.getElementById('kanban-container');
+                                    renderKanbanBoard(kanbanContainer, data.columns, data.tasks, data.users);
+                                    // 更新缓存数据
+                                    window.kanbanData = data;
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Failed to reload kanban data:', error);
+                            });
+                    }
+                } else {
+                    // 恢复原状态
+                    if (statusSelect) {
+                        statusSelect.value = originalStatus;
+                    }
+                    showAlert('任务状态更新失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                if (statusSelect) {
+                    statusSelect.disabled = false;
+                    // 恢复原状态
+                    statusSelect.value = originalStatus;
+                }
+                showAlert('任务状态更新失败: ' + error, 'danger');
+            });
+        }
+
+        // 更新任务负责人
+        function updateTaskAssignee(taskId, newAssigneeId) {
+            // 显示加载状态
+            const assigneeSelect = document.querySelector('.assignee-select');
+            const originalAssignee = assigneeSelect.value;
+            assigneeSelect.disabled = true;
+
+            // 发送请求更新任务负责人
+            fetch(`/edit_task/${taskId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `assignee_id=${encodeURIComponent(newAssigneeId)}&_method=PUT`
+            })
+            .then(response => {
+                // 检查响应是否为JSON格式
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON响应');
+                }
+                return response.json();
+            })
+            .then(data => {
+                assigneeSelect.disabled = false;
+                if (data.success) {
+                    // 显示成功消息
+                    showAlert('任务负责人更新成功', 'success');
+
+                    // 重新加载看板数据
+                    if (currentSprintId) {
+                        fetch(`/get_kanban_data/${currentSprintId}`)
+                            .then(response => {
+                                // 检查响应是否为JSON格式
+                                const contentType = response.headers.get('content-type');
+                                if (!contentType || !contentType.includes('application/json')) {
+                                    throw new Error('服务器返回了非JSON响应');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.success) {
+                                    const kanbanContainer = document.getElementById('kanban-container');
+                                    renderKanbanBoard(kanbanContainer, data.columns, data.tasks, data.users);
+                                    // 更新缓存数据
+                                    window.kanbanData = data;
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Failed to reload kanban data:', error);
+                            });
+                    }
+                } else {
+                    // 恢复原负责人
+                    assigneeSelect.value = originalAssignee;
+                    showAlert('任务负责人更新失败: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                assigneeSelect.disabled = false;
+                // 恢复原负责人
+                assigneeSelect.value = originalAssignee;
+                showAlert('任务负责人更新失败: ' + error, 'danger');
+            });
+        }
+
+
+        // 显示提示消息
+        function showAlert(message, type) {
+            // 检查是否已存在相同类型的消息
+            const existingAlert = document.querySelector(`.alert.alert-${type}`);
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+
+            // 创建提示元素
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.style.margin = '10px';
+            alertDiv.role = 'alert';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+
+            // 添加到页面
+            document.body.appendChild(alertDiv);
+
+            // 3秒后自动移除
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 3000);
+        }
+
+
+    </script>
+</body>
+</html>

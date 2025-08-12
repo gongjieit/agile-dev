@@ -1,0 +1,51 @@
+<div class="modal-header">
+    <h5 class="modal-title">添加用户故事</h5>
+    <button type="button" class="btn-close" onclick="closeAddStoryModal()"></button>
+</div>
+<div class="modal-body">
+    <form id="add-user-story-form">
+        <input type="hidden" id="add-story-page-id" name="project_page_id" value="">
+        <div class="mb-3">
+            <label for="add-story-id" class="form-label">故事编号</label>
+            <input type="text" name="story_id" id="add-story-id" class="form-control" placeholder="例如：US_01_001" value="{{ story_id or '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="add-story-title" class="form-label">故事标题</label>
+            <input type="text" name="title" id="add-story-title" class="form-control" placeholder="简短故事标题" required>
+        </div>
+        <div class="mb-3">
+            <label for="add-story-description" class="form-label">故事描述</label>
+            <textarea name="description" id="add-story-description" class="form-control" rows="4" placeholder="作为&lt;角色&gt;，我希望&lt;功能&gt;，以便&lt;价值&gt;"></textarea>
+            <small class="form-text text-muted">请使用 "作为...我希望...以便..." 的格式</small>
+        </div>
+        <div class="mb-3">
+            <label for="add-story-criteria" class="form-label">验收标准</label>
+            <textarea name="acceptance_criteria" id="add-story-criteria" rows="4" class="form-control"></textarea>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="add-story-effort" class="form-label">工作量(人天)</label>
+                    <input type="number" name="effort" id="add-story-effort" class="form-control" step="0.5" value="0.5">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="add-story-priority" class="form-label">优先级</label>
+                    <select name="priority" id="add-story-priority" class="form-select">
+                        <option value="P0">P0</option>
+                        <option value="P1">P1</option>
+                        <option value="P2">P2</option>
+                        <option value="P3" selected>P3</option>
+                        <option value="P4">P4</option>
+                        <option value="P5">P5</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" onclick="closeAddStoryModal()">取消</button>
+    <button type="button" class="btn btn-primary" onclick="saveUserStory()">保存</button>
+</div>

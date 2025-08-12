@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{% if knowledge_article %}编辑知识{% else %}添加知识{% endif %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <style>
+        .markdown-editor {
+            min-height: 300px;
+        }
+        .markdown-preview {
+            min-height: 300px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
+        .nav-tabs .nav-link.active {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #f8f9fa;
+        }
+
+        /* 添加默认 Markdown 样式 */
+        .markdown-preview h1 {
+            font-size: 2em;
+            margin: 0.67em 0;
+        }
+        .markdown-preview h2 {
+            font-size: 1.5em;
+            margin: 0.83em 0;
+        }
+        .markdown-preview p {
+            margin: 1em 0;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-5">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb breadcrumb-chevron">
+                <li class="breadcrumb-item"><a href="{{ url_for('auth.index') }}">首页</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('knowledge.knowledge') }}">知识管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{% if knowledge_article %}编辑知识{% else %}添加知识{% endif %}</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">{% if knowledge_article %}编辑知识{% else %}添加知识{% endif %}</h3>
+            <a href="{{ url_for('knowledge.knowledge') }}" class="btn btn-outline-secondary">返回知识列表</a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">知识信息</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">标题</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ knowledge_article.title if knowledge_article else '' }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category" class="form-label">分类（可选）</label>
+                        <input type="text" class="form-control" id="category" name="category" value="{{ knowledge_article.category if knowledge_article else '' }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">内容</label>
+                        <ul class="nav nav-tabs" id="contentTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit" type="button" role="tab" aria-controls="edit" aria-selected="true">编辑</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="preview-tab" data-bs-toggle="tab" data-bs-target="#preview" type="button" role="tab" aria-controls="preview" aria-selected="false">预览</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="contentTabsContent">
+                            <div class="tab-pane fade show active" id="edit" role="tabpanel" aria-labelledby="edit-tab">
+                                <textarea class="form-control markdown-editor" id="content" name="content" rows="15" required>{{ knowledge_article.content if knowledge_article else '' }}</textarea>
+                                <div class="form-text">
+                                    支持 Markdown 语法。可以使用 **粗体**、*斜体*、# 标题、- 列表等。
+                                </div>
+                            </div>
+                            <div class="tab-pane fade markdown-preview" id="preview" role="tabpanel" aria-labelledby="preview-tab">
+                                预览区域
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">保存</button>
+                    <a href="{{ url_for('knowledge.knowledge') }}" class="btn btn-secondary">取消</a>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='marked.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const editor = document.getElementById('content');
+            const preview = document.getElementById('preview');
+            const editTab = document.getElementById('edit-tab');
+            const previewTab = document.getElementById('preview-tab');
+
+            // 初始化预览内容
+            function updatePreview() {
+                if (editor.value) {
+                    preview.innerHTML = marked.parse(editor.value);
+                } else {
+                    preview.innerHTML = '<p class="text-muted">预览区域为空</p>';
+                }
+            }
+
+            // 点击预览标签时更新预览内容
+            previewTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                // 切换标签激活状态
+                editTab.classList.remove('active');
+                previewTab.classList.add('active');
+                document.getElementById('edit').classList.remove('show', 'active');
+                document.getElementById('preview').classList.add('show', 'active');
+                updatePreview();
+            });
+
+            // 点击编辑标签时切换回编辑模式
+            editTab.addEventListener('click', function(e) {
+                e.preventDefault();
+                // 切换标签激活状态
+                previewTab.classList.remove('active');
+                editTab.classList.add('active');
+                document.getElementById('preview').classList.remove('show', 'active');
+                document.getElementById('edit').classList.add('show', 'active');
+            });
+
+            // 编辑器内容变化时更新预览（如果在预览模式下）
+            editor.addEventListener('input', function() {
+                // 检查当前是否在预览标签页
+                if (previewTab.classList.contains('active')) {
+                    updatePreview();
+                }
+            });
+
+            // 初始化预览
+            updatePreview();
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

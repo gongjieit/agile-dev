@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户列表</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-light">
+{% include 'navbar.html' %}
+<div class="container-fluid mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">用户管理</h3>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">用户列表</h5>
+        </div>
+        <div class="card-body p-0">
+            {% if users %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>角色</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.name }}</td>
+                            <td>
+                                {% if user.role_names %}
+                                    {{ user.role_names | join(', ') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.id != session.user_id %}
+                                    <!-- 分配角色按钮 -->
+                                    <button class="btn btn-sm btn-outline-primary assign-roles-btn"
+                                        data-id="{{ user.id }}"
+                                        data-name="{{ user.name }}">分配角色</button>
+
+                                    <form method="post" action="{{ url_for('users.delete_user', user_id=user.id) }}" style="display:inline;" onsubmit="return confirm('确定要删除用户 {{ user.name }} 吗？');">
+                                        <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted">当前用户</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <p class="mb-0">暂无用户</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<!-- 分配角色模态框 -->
+<div class="modal fade" id="assignRolesModal" tabindex="-1" aria-labelledby="assignRolesModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="assignRolesForm">
+                <input type="hidden" id="assign_user_id" name="user_id">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignRolesModalLabel">分配角色</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">为 <span id="assign_user_name"></span> 分配角色</label>
+                        <div class="border p-3" style="max-height: 300px; overflow-y: auto;">
+                            {% for role in roles %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="role_ids" value="{{ role.id }}" id="role_{{ role.id }}">
+                                <label class="form-check-label" for="role_{{ role.id }}">
+                                    {{ role.display_name }} ({{ role.name }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+<script>
+    // 分配角色按钮点击事件
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('assign-roles-btn')) {
+            const userId = e.target.getAttribute('data-id');
+            const userName = e.target.getAttribute('data-name');
+
+            // 设置表单数据
+            document.getElementById('assign_user_id').value = userId;
+            document.getElementById('assign_user_name').textContent = userName;
+
+            // 获取用户当前角色
+            fetch('/users/get_roles/' + userId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 重置所有复选框
+                    document.querySelectorAll('#assignRolesModal input[type="checkbox"]').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+
+                    // 选中用户当前的角色
+                    data.role_ids.forEach(roleId => {
+                        const checkbox = document.getElementById('role_' + roleId);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                    });
+
+                    // 显示模态框
+                    const modal = new bootstrap.Modal(document.getElementById('assignRolesModal'));
+                    modal.show();
+                } else {
+                    alert('获取用户角色信息失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('获取用户角色信息失败:', error);
+                alert('获取用户角色信息失败: ' + error);
+            });
+        }
+    });
+
+    // 分配角色表单提交
+    document.getElementById('assignRolesForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const userId = document.getElementById('assign_user_id').value;
+        const formData = new FormData(this);
+
+        fetch('/users/assign_roles/' + userId, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('角色分配成功');
+                location.reload();
+            } else {
+                alert('分配失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('分配角色失败:', error);
+            alert('分配失败: ' + error);
+        });
+    });
+</script>
+</body>
+</html>

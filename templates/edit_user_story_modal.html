@@ -1,0 +1,51 @@
+<div class="modal-header">
+    <h5 class="modal-title">编辑用户故事</h5>
+    <button type="button" class="btn-close" onclick="closeEditStoryModal()"></button>
+</div>
+<div class="modal-body">
+    <form id="edit-user-story-form">
+        <input type="hidden" id="edit-story-id" name="user_story_id" value="{{ user_story.id }}">
+        <div class="mb-3">
+            <label for="edit-story-id-field" class="form-label">故事编号</label>
+            <input type="text" name="story_id" id="edit-story-id-field" class="form-control" placeholder="例如：US_01_001" value="{{ user_story.story_id or '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="edit-story-title" class="form-label">故事标题</label>
+            <input type="text" name="title" id="edit-story-title" class="form-control" placeholder="简短故事标题" value="{{ user_story.title }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="edit-story-description" class="form-label">故事描述</label>
+            <textarea name="description" id="edit-story-description" class="form-control" rows="4" placeholder="作为&lt;角色&gt;，我希望&lt;功能&gt;，以便&lt;价值&gt;">{{ user_story.description or '' }}</textarea>
+        </div>
+        <div class="mb-3">
+            <label for="edit-story-criteria" class="form-label">验收标准</label>
+            <textarea name="acceptance_criteria" id="edit-story-criteria" rows="4" class="form-control">{{ user_story.acceptance_criteria or '' }}</textarea>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="edit-story-effort" class="form-label">工作量(人天)</label>
+                    <input type="number" name="effort" id="edit-story-effort" class="form-control" step="0.5" value="{{ user_story.effort or '' }}">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="edit-story-priority" class="form-label">优先级</label>
+                    <select name="priority" id="edit-story-priority" class="form-select">
+                        <option value="P0" {% if user_story.priority == 'P0' %}selected{% endif %}>P0</option>
+                        <option value="P1" {% if user_story.priority == 'P1' %}selected{% endif %}>P1</option>
+                        <option value="P2" {% if user_story.priority == 'P2' %}selected{% endif %}>P2</option>
+                        <option value="P3" {% if user_story.priority == 'P3' or not user_story.priority %}selected{% endif %}>P3</option>
+                        <option value="P4" {% if user_story.priority == 'P4' %}selected{% endif %}>P4</option>
+                        <option value="P5" {% if user_story.priority == 'P5' %}selected{% endif %}>P5</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" onclick="closeEditStoryModal()">取消</button>
+    <button type="button" class="btn btn-primary" onclick="saveEditedUserStory()">保存</button>
+</div>

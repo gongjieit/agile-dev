@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>系统功能管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+    function enableEdit(id) {
+        document.getElementById('description-'+id).removeAttribute('readonly');
+        document.getElementById('is_public-'+id).removeAttribute('disabled');
+        document.getElementById('is_enabled-'+id).removeAttribute('disabled');
+        document.getElementById('edit-btn-'+id).style.display = 'none';
+        document.getElementById('save-btn-'+id).style.display = 'inline-block';
+    }
+
+    function saveFeature(id) {
+        // 创建表单数据
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{{ url_for('system_features.update_system_features') }}";
+
+        // 获取字段值
+        const description = document.getElementById('description-'+id).value;
+        const isEnabled = document.getElementById('is_enabled-'+id).checked;
+        const isPublic = document.getElementById('is_public-'+id).checked;
+
+        // 创建隐藏输入字段
+        const descriptionInput = document.createElement('input');
+        descriptionInput.type = 'hidden';
+        descriptionInput.name = 'description_' + id;
+        descriptionInput.value = description;
+        form.appendChild(descriptionInput);
+
+        const enabledInput = document.createElement('input');
+        enabledInput.type = 'hidden';
+        enabledInput.name = 'is_enabled_' + id;
+        enabledInput.value = isEnabled ? 'on' : '';
+        form.appendChild(enabledInput);
+
+        const publicInput = document.createElement('input');
+        publicInput.type = 'hidden';
+        publicInput.name = 'is_public_' + id;
+        publicInput.value = isPublic ? 'on' : '';
+        form.appendChild(publicInput);
+
+        // 提交表单
+        document.body.appendChild(form);
+        form.submit();
+    }
+    </script>
+</head>
+<body class="bg-light">
+{% include 'navbar.html' %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">系统功能管理</h3>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">系统功能列表</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>功能名称</th>
+                            <th>路由名称</th>
+                            <th>功能描述</th>
+                            <th>启用状态</th>
+                            <th>普通用户访问</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for system_feature in system_features %}
+                        <tr>
+                            <td>{{ system_feature.id }}</td>
+                            <td>{{ system_feature.name }}</td>
+                            <td>{{ system_feature.route_name }}</td>
+                            <td>
+                                <textarea name="description_{{ system_feature.id }}" id="description-{{ system_feature.id }}" class="form-control form-control-sm" rows="2" readonly>{{ system_feature.description or '' }}</textarea>
+                            </td>
+                            <td>
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_enabled_{{ system_feature.id }}" id="is_enabled-{{ system_feature.id }}" class="form-check-input" {% if system_feature.is_enabled %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="is_enabled-{{ system_feature.id }}">启用</label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="form-check">
+                                    <input type="checkbox" name="is_public_{{ system_feature.id }}" id="is_public-{{ system_feature.id }}" class="form-check-input" {% if system_feature.is_public %}checked{% endif %} disabled>
+                                    <label class="form-check-label" for="is_public-{{ system_feature.id }}">公开</label>
+                                </div>
+                            </td>
+                            <td>{{ system_feature.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-secondary" id="edit-btn-{{ system_feature.id }}" onclick="enableEdit({{ system_feature.id }})">编辑</button>
+                                <button type="button" class="btn btn-sm btn-success" id="save-btn-{{ system_feature.id }}" style="display:none;" onclick="saveFeature({{ system_feature.id }})">保存</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

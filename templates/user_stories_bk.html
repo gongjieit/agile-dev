@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>用户故事管理页面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='user_stories.css') }}">
+    <style>
+        /* 树形结构样式 */
+        .tree {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .tree ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        
+        .tree-node {
+            padding: 5px;
+            margin: 2px 0;
+            border-radius: 4px;
+        }
+        
+        .tree-node:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .tree-node.selected {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        /* 项目节点样式 */
+        .project-node {
+            font-weight: bold;
+            color: #28a745;
+        }
+        
+        /* 菜单节点样式 */
+        .menu-node {
+            font-weight: bold;
+            color: #ffc107;
+        }
+        
+        /* 页面节点样式 */
+        .page-node {
+            color: #17a2b8;
+        }
+        
+        .node-children {
+            margin-left: 15px;
+        }
+    </style>
+    <script>
+    // 当前选中的页面ID
+    let selectedPageId = null;
+    
+    // 项目选择变化事件
+    function onProjectChange() {
+        const projectId = document.getElementById('project-select').value;
+        const treeContainer = document.getElementById('project-tree');
+        const storiesContainer = document.getElementById('user-stories-list');
+        
+        // 清空现有内容
+        treeContainer.innerHTML = '';
+        storiesContainer.innerHTML = '<p class="text-muted">请选择一个页面节点查看用户故事</p>';
+        selectedPageId = null;
+        
+        if (!projectId) {
+            return;
+        }
+        
+        // 获取项目树形结构
+        fetch(`/get_project_tree/${projectId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderTree(treeContainer, data.tree);
+                } else {
+                    treeContainer.innerHTML = '<p class="text-danger">加载失败: ' + data.message + '</p>';
+                }
+            })
+            .catch(error => {
+                treeContainer.innerHTML = '<p class="text-danger">加载失败: ' + error + '</p>';
+            });
+    }
+    
+    // 渲染树形结构
+    function renderTree(container, nodes) {
+        if (!nodes || nodes.length === 0) {
+            container.innerHTML = '<p class="text-muted">该项目下暂无菜单和页面</p>';
+            return;
+        }
+        
+        const ul = document.createElement('ul');
+        ul.className = 'tree';
+        
+        nodes.forEach(node => {
+            const li = document.createElement('li');
+            
+            // 创建节点元素
+            const nodeElement = document.createElement('div');
+            nodeElement.className = 'tree-node';
+            
+            // 根据节点类型添加不同的CSS类和图标
+            if (node.node_type === 'project') {
+                nodeElement.classList.add('project-node');
+                nodeElement.innerHTML = '📂 ' + node.name;
+            } else if (node.node_type === 'menu') {
+                nodeElement.classList.add('menu-node');
+                nodeElement.innerHTML = '📁 ' + node.name;
+            } else if (node.node_type === 'page') {
+                nodeElement.classList.add('page-node');
+                nodeElement.innerHTML = '📄 ' + node.name;
+                nodeElement.style.cursor = 'pointer';
+                nodeElement.addEventListener('click', function() {
+                    selectPageNode(this, node.id);
+                });
+            } else {
+                nodeElement.textContent = node.name;
+            }
+            
+            li.appendChild(nodeElement);
+            
+            // 递归渲染子节点
+            if (node.children && node.children.length > 0) {
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'node-children';
+                renderTree(childrenContainer, node.children);
+                li.appendChild(childrenContainer);
+            }
+            
+            ul.appendChild(li);
+        });
+        
+        container.appendChild(ul);
+    }
+    
+    // 选择页面节点
+    function selectPageNode(element, pageId) {
+        // 清除之前选中的节点样式
+        document.querySelectorAll('.tree-node').forEach(node => {
+            node.classList.remove('selected');
+        });
+        
+        // 设置当前节点为选中状态
+        element.classList.add('selected');
+        selectedPageId = pageId;
+        
+        // 获取该页面的用户故事
+        fetch(`/get_user_stories_by_page/${pageId}`)
+            .then(response => response.json())
+            .then(data => {
+                const storiesContainer = document.getElementById('user-stories-list');
+                if (data.success) {
+                    // 保存用户列表到全局变量
+                    window.userStoryUsers = data.users;
+                    renderUserStories(storiesContainer, data.user_stories);
+                } else {
+                    storiesContainer.innerHTML = '<p class="text-danger">加载失败: ' + data.message + '</p>';
+                }
+            })
+            .catch(error => {
+                const storiesContainer = document.getElementById('user-stories-list');
+                storiesContainer.innerHTML = '<p class="text-danger">加载失败: ' + error + '</p>';
+            });
+    }
+    
+    // 渲染用户故事列表
+    function renderUserStories(container, stories) {
+        // 获取用户列表（从全局变量或通过其他方式传递）
+        const users = window.userStoryUsers || [];
+        
+        if (!stories || stories.length === 0) {
+            container.innerHTML = `
+                <div class="text-center">
+                    <p class="text-muted">该页面下暂无用户故事</p>
+                    <button class="btn btn-primary" onclick="showAddStoryForm()">添加用户故事</button>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>用户故事列表</h5>
+                <button class="btn btn-primary" onclick="showAddStoryForm()">添加用户故事</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>故事编号</th>
+                            <th>故事标题</th>
+                            <th>故事描述</th>
+                            <th>优先级</th>
+                            <th>工作量</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        stories.forEach(story => {
+            // 处理优先级选项
+            let priorityOptions = '';
+            const priorityList = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5'];
+            priorityList.forEach(priority => {
+                const selected = story.priority === priority ? 'selected' : '';
+                priorityOptions += `<option value="${priority}" ${selected}>${priority}</option>`;
+            });
+            
+            html += `
+                <tr>
+                    <form method="post" action="/edit_user_story/${story.id}" class="d-inline">
+                    <td>
+                        <a href="javascript:void(0)" onclick="editUserStory(${story.id})">${story.story_id}</a>
+                    </td>
+                    <td>
+                        ${story.title}
+                    </td>
+                    <td>
+                        ${story.description || ''}
+                    </td>
+                    <td>
+                        ${story.priority}
+                    </td>
+                    <td>
+                        ${story.effort}
+                    </td>
+                    <td>${story.created_at}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteUserStory(${story.id})">删除</button>
+                    </td>
+                    </form>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+    
+    // 显示添加用户故事表单
+    function showAddStoryForm() {
+        if (!selectedPageId) {
+            alert('请先选择一个页面节点');
+            return;
+        }
+        
+        // 显示模态框
+        document.getElementById('add-story-modal').style.display = 'block';
+        
+        // 通过AJAX加载模态框内容
+        fetch(`/get_add_user_story_modal?project_page_id=${selectedPageId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('add-story-modal-content').innerHTML = html;
+            // 设置表单中的页面ID
+            document.getElementById('add-story-page-id').value = selectedPageId;
+        })
+        .catch(error => {
+            console.error('加载模态框内容失败:', error);
+            document.getElementById('add-story-modal-content').innerHTML = 
+                '<div class="modal-header"><h5 class="modal-title">错误</h5><button type="button" class="btn-close" onclick="closeAddStoryModal()"></button></div>' +
+                '<div class="modal-body"><p>加载表单失败，请稍后重试。</p></div>' +
+                '<div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeAddStoryModal()">关闭</button></div>';
+        });
+    }
+    
+    // 关闭添加用户故事模态框
+    function closeAddStoryModal() {
+        document.getElementById('add-story-modal').style.display = 'none';
+    }
+    
+    // 保存用户故事
+    function saveUserStory() {
+        const form = document.getElementById('add-user-story-form');
+        const formData = new FormData(form);
+        const pageId = document.getElementById('add-story-page-id').value; // 获取页面ID
+        const currentPageId = selectedPageId; // 保存当前页面ID
+        
+        fetch(`/add_user_story/${pageId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('添加成功');
+                closeAddStoryModal();
+                // 清空表单
+                form.reset();
+                // 重新加载用户故事
+                if (currentPageId) {
+                    const selectedNode = document.querySelector('.tree-node.selected');
+                    if (selectedNode) {
+                        selectPageNode(selectedNode, currentPageId);
+                    }
+                }
+            } else {
+                alert('添加失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('添加失败: ' + error);
+        });
+    }
+    
+    // 编辑用户故事
+    function editUserStory(storyId) {
+        // 显示编辑模态框
+        document.getElementById('edit-story-modal').style.display = 'block';
+        
+        // 通过AJAX加载模态框内容和用户故事数据
+        fetch(`/get_edit_user_story_modal/${storyId}`)
+        .then(response => response.text())
+        .then(html => {
+            document.getElementById('edit-story-modal-content').innerHTML = html;
+        })
+        .catch(error => {
+            console.error('加载模态框内容失败:', error);
+            document.getElementById('edit-story-modal-content').innerHTML = 
+                '<div class="modal-header"><h5 class="modal-title">错误</h5><button type="button" class="btn-close" onclick="closeEditStoryModal()"></button></div>' +
+                '<div class="modal-body"><p>加载表单失败，请稍后重试。</p></div>' +
+                '<div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeEditStoryModal()">关闭</button></div>';
+        });
+    }
+    
+    // 关闭编辑用户故事模态框
+    function closeEditStoryModal() {
+        document.getElementById('edit-story-modal').style.display = 'none';
+    }
+    
+    // 保存编辑的用户故事
+    function saveEditedUserStory() {
+        const form = document.getElementById('edit-user-story-form');
+        const formData = new FormData(form);
+        const storyId = document.getElementById('edit-story-id').value;
+        const currentPageId = selectedPageId; // 保存当前页面ID
+        
+        fetch(`/edit_user_story/${storyId}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('保存成功');
+                closeEditStoryModal();
+                // 重新加载用户故事
+                if (currentPageId) {
+                    const selectedNode = document.querySelector('.tree-node.selected');
+                    if (selectedNode) {
+                        selectPageNode(selectedNode, currentPageId);
+                    }
+                }
+            } else {
+                alert('保存失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('保存失败: ' + error);
+        });
+    }
+    
+    // 删除用户故事
+    function deleteUserStory(storyId) {
+        if (!confirm('确定要删除该用户故事吗？')) {
+            return;
+        }
+        
+        fetch(`/delete_user_story/${storyId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                // 重新加载当前页面的用户故事
+                if (selectedPageId) {
+                    const selectedNode = document.querySelector('.tree-node.selected');
+                    if (selectedNode) {
+                        selectPageNode(selectedNode, selectedPageId);
+                    }
+                }
+            } else {
+                alert('删除失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('删除失败: ' + error);
+        });
+    }
+    
+    // 导出用户故事到Excel
+    function exportToExcel() {
+        if (!selectedPageId) {
+            alert('请先选择一个页面节点');
+            return;
+        }
+        
+        // 发起导出请求
+        window.location.href = `/export_user_stories/${selectedPageId}`;
+    }
+    </script>
+</head>
+<body class="bg-light">
+{% include 'navbar.html' %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">用户故事管理</h3>
+        <button class="btn btn-success" onclick="exportToExcel()">导出到Excel</button>
+    </div>
+
+    <div class="row">
+        <!-- 左侧：项目选择和树形结构 -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">项目结构</h5>
+                </div>
+                <div class="card-body">
+                    <!-- 项目选择下拉列表 -->
+                    <div class="mb-3">
+                        <label for="project-select" class="form-label">选择项目</label>
+                        <select class="form-select" id="project-select" onchange="onProjectChange()">
+                            <option value="">请选择项目</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}{% if project.short_name %} ({{ project.short_name }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- 项目树形结构 -->
+                    <div id="project-tree">
+                        <p class="text-muted">请选择一个项目查看菜单和页面</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 中间：用户故事列表 -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">用户故事</h5>
+                </div>
+                <div class="card-body">
+                    <div id="user-stories-list">
+                        <p class="text-muted">请选择一个页面节点查看用户故事</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加用户故事模态框 -->
+<div id="add-story-modal" class="modal" tabindex="-1" style="display: none; background-color: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+    <div class="modal-dialog">
+        <div class="modal-content" id="add-story-modal-content">
+            <!-- 模态框内容将通过AJAX加载 -->
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑用户故事模态框 -->
+<div id="edit-story-modal" class="modal" tabindex="-1" style="display: none; background-color: rgba(0,0,0,0.5); position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+    <div class="modal-dialog">
+        <div class="modal-content" id="edit-story-modal-content">
+            <!-- 模态框内容将通过AJAX加载 -->
+            <div class="text-center p-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

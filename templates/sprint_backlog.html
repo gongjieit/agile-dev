@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>迭代待办列表管理 - 敏捷开发工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>迭代待办列表管理</h3>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">未分配的用户故事</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="stories-table">
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" id="select-all-stories">
+                                        </th>
+                                        <th>用户故事ID</th>
+                                        <th>用户故事</th>
+                                        <th>优先级</th>
+                                        <th>故事点</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="stories-container">
+                                    <tr>
+                                        <td colspan="6" class="text-center">
+                                            <p class="text-muted">请选择一个迭代或点击"加载用户故事"按钮</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button class="btn btn-primary me-md-2" type="button" id="load-stories-btn">
+                                <span id="load-stories-text">加载用户故事</span>
+                                <span id="load-stories-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">添加到迭代</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="sprint-select" class="form-label">选择迭代</label>
+                            <select class="form-select" id="sprint-select">
+                                <option value="">请选择迭代</option>
+                                {% for sprint in sprints %}
+                                <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success" type="button" id="add-to-sprint-btn" disabled>
+                                <span id="add-to-sprint-text">添加到选中迭代</span>
+                                <span id="add-to-sprint-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div class="alert alert-info" role="alert">
+                                <h6 class="alert-heading">操作说明</h6>
+                                <p>1. 点击"加载用户故事"按钮加载未分配的用户故事</p>
+                                <p>2. 使用复选框选择一个或多个用户故事</p>
+                                <p>3. 从下拉列表中选择目标迭代</p>
+                                <p>4. 点击"添加到选中迭代"按钮完成操作</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 全选/取消全选功能
+        document.getElementById('select-all-stories').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('#stories-container input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            
+            // 更新添加按钮状态
+            updateAddButtonState();
+        });
+        
+        // 更新添加按钮状态
+        function updateAddButtonState() {
+            const selectedStories = document.querySelectorAll('#stories-container input[type="checkbox"]:checked');
+            const sprintSelect = document.getElementById('sprint-select');
+            const addButton = document.getElementById('add-to-sprint-btn');
+            
+            addButton.disabled = !(selectedStories.length > 0 && sprintSelect.value);
+        }
+        
+        // 监听用户故事选择变化
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.matches('#stories-container input[type="checkbox"]')) {
+                updateAddButtonState();
+            }
+        });
+        
+        // 监听迭代选择变化
+        document.getElementById('sprint-select').addEventListener('change', updateAddButtonState);
+        
+        // 加载用户故事
+        document.getElementById('load-stories-btn').addEventListener('click', function() {
+            const loadBtn = this;
+            const loadText = document.getElementById('load-stories-text');
+            const loadSpinner = document.getElementById('load-stories-spinner');
+            
+            // 显示加载状态
+            loadText.classList.add('d-none');
+            loadSpinner.classList.remove('d-none');
+            loadBtn.disabled = true;
+            
+            // 获取用户故事
+            fetch('/get_available_stories')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderStories(data.user_stories);
+                    } else {
+                        alert('加载失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('加载失败: ' + error);
+                })
+                .finally(() => {
+                    // 恢复按钮状态
+                    loadText.classList.remove('d-none');
+                    loadSpinner.classList.add('d-none');
+                    loadBtn.disabled = false;
+                });
+        });
+        
+        // 渲染用户故事列表
+        function renderStories(stories) {
+            const container = document.getElementById('stories-container');
+            
+            if (!stories || stories.length === 0) {
+                container.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            暂无未分配的用户故事
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            stories.forEach(story => {
+                html += `
+                    <tr>
+                        <td>
+                            <input type="checkbox" name="story_ids" value="${story.id}" data-story-id="${story.id}">
+                        </td>
+                        <td>${story.story_id || '未分配ID'}</td>
+                        <td>${story.title}</td>
+                        <td>${story.priority}</td>
+                        <td>${story.effort || '未估算'}</td>
+                        <td>${story.status}</td>
+                    </tr>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // 添加用户故事到迭代
+        document.getElementById('add-to-sprint-btn').addEventListener('click', function() {
+            const addButton = this;
+            const addText = document.getElementById('add-to-sprint-text');
+            const addSpinner = document.getElementById('add-to-sprint-spinner');
+            const sprintSelect = document.getElementById('sprint-select');
+            
+            // 获取选中的用户故事
+            const selectedCheckboxes = document.querySelectorAll('#stories-container input[type="checkbox"]:checked');
+            const storyIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+            
+            if (storyIds.length === 0) {
+                alert('请选择至少一个用户故事');
+                return;
+            }
+            
+            if (!sprintSelect.value) {
+                alert('请选择目标迭代');
+                return;
+            }
+            
+            // 显示加载状态
+            addText.classList.add('d-none');
+            addSpinner.classList.remove('d-none');
+            addButton.disabled = true;
+            
+            // 准备表单数据
+            const formData = new FormData();
+            formData.append('sprint_id', sprintSelect.value);
+            storyIds.forEach(id => {
+                formData.append('story_ids', id);
+            });
+            
+            // 发送请求
+            fetch('/add_stories_to_sprint', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    // 清除选择
+                    selectedCheckboxes.forEach(cb => cb.checked = false);
+                    document.getElementById('select-all-stories').checked = false;
+                    updateAddButtonState();
+                    // 重新加载用户故事
+                    document.getElementById('load-stories-btn').click();
+                } else {
+                    alert('操作失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('操作失败: ' + error);
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                addText.classList.remove('d-none');
+                addSpinner.classList.add('d-none');
+                addButton.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>

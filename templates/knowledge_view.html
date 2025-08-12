@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>敏捷开发知识</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <style>
+        .article-item {
+            border-left: 3px solid #007bff;
+            padding-left: 1rem;
+            transition: background-color 0.2s;
+        }
+        .article-item:hover {
+            background-color: #f8f9fa;
+        }
+        .article-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #212529;
+            text-decoration: none;
+        }
+        .article-title:hover {
+            color: #007bff;
+            text-decoration: underline;
+        }
+        .article-meta {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .category-badge {
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">敏捷开发知识</h3>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">知识文章列表</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if knowledge_articles %}
+                <div class="list-group list-group-flush">
+                    {% for article in knowledge_articles %}
+                    <div class="list-group-item article-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <a href="{{ url_for('knowledge.knowledge_detail', knowledge_id=article.id) }}" class="article-title">
+                                {{ article.title }}
+                            </a>
+                            {% if article.category %}
+                            <span class="badge bg-secondary category-badge">{{ article.category }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="article-meta mt-1">
+                            <span>作者：{{ article.author.name }}</span>
+                            <span class="mx-2">•</span>
+                            <span>更新时间：{{ article.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <p class="mb-0">暂无知识文章</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ sprint.name }} - 迭代详情 - 敏捷开发工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    
+    <div class="container-fluid mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('sprints.sprints') }}">迭代管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ sprint.name }}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3>{{ sprint.name }}</h3>
+                <p class="text-muted mb-0">
+                    {{ sprint.start_date }} 至 {{ sprint.end_date }} 
+                    <span class="badge bg-secondary">{{ sprint.status }}</span>
+                </p>
+            </div>
+            {% if check_system_feature_access(session, 'sprints.sprints') %}
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addToSprintModal">添加用户故事</button>
+            {% endif %}
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">团队</h6>
+                        <p class="card-text">{{ sprint.team or '未指定' }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">产品负责人</h6>
+                        <p class="card-text">{{ sprint.product_owner.name if sprint.product_owner else '未指定' }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">Scrum Master</h6>
+                        <p class="card-text">{{ sprint.scrum_master.name if sprint.scrum_master else '未指定' }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">统计信息</h6>
+                        <p class="card-text">
+                            总计: {{ sprint.sprint_backlogs|length }} 个故事<br>
+                            已完成: {{ completed_count }} 个故事<br>
+                            总故事点: {{ total_story_points }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="backlogTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="todo-tab" data-bs-toggle="tab" data-bs-target="#todo" type="button" role="tab">待处理</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="in-progress-tab" data-bs-toggle="tab" data-bs-target="#in-progress" type="button" role="tab">开发中</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="testing-tab" data-bs-toggle="tab" data-bs-target="#testing" type="button" role="tab">测试中</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="done-tab" data-bs-toggle="tab" data-bs-target="#done" type="button" role="tab">已完成</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">全部</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="backlogTabsContent">
+                    <div class="tab-pane fade show active" id="todo" role="tabpanel">
+                        {% if todo_backlogs %}
+                            {% with backlogs=todo_backlogs %}
+                                {% include 'sprint_backlog_table.html' with context %}
+                            {% endwith %}
+                        {% else %}
+                            <p class="text-muted">暂无待处理的用户故事</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="in-progress" role="tabpanel">
+                        {% if in_progress_backlogs %}
+                            {% with backlogs=in_progress_backlogs %}
+                                {% include 'sprint_backlog_table.html' with context %}
+                            {% endwith %}
+                        {% else %}
+                            <p class="text-muted">暂无开发中的用户故事</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="testing" role="tabpanel">
+                        {% if testing_backlogs %}
+                            {% with backlogs=testing_backlogs %}
+                                {% include 'sprint_backlog_table.html' with context %}
+                            {% endwith %}
+                        {% else %}
+                            <p class="text-muted">暂无测试中的用户故事</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="done" role="tabpanel">
+                        {% if done_backlogs %}
+                            {% with backlogs=done_backlogs %}
+                                {% include 'sprint_backlog_table.html' with context %}
+                            {% endwith %}
+                        {% else %}
+                            <p class="text-muted">暂无已完成的用户故事</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="all" role="tabpanel">
+                        {% if sprint.sprint_backlogs %}
+                            {% include 'sprint_backlog_table.html' with context %}
+                        {% else %}
+                            <p class="text-muted">暂无用户故事</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加用户故事到迭代的模态框 -->
+    <div class="modal fade" id="addToSprintModal" tabindex="-1" aria-labelledby="addToSprintModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('sprints.add_to_sprint', sprint_id=sprint.id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addToSprintModalLabel">添加用户故事到迭代</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>选择</th>
+                                        <th>用户故事ID</th>
+                                        <th>用户故事</th>
+                                        <th>所属功能</th>
+                                        <th>优先级</th>
+                                        <th>故事点</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for story in available_stories %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="user_story_ids" value="{{ story.id }}">
+                                        </td>
+                                        <td>{{ story.story_id or '未分配ID' }}</td>
+                                        <td>{{ story.title }}</td>
+                                        <td>{{ story.project_path }}</td>
+                                        <td>{{ story.priority }}</td>
+                                        <td>{{ story.effort or '未估算' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑待办事项模态框 -->
+    {% if check_system_feature_access(session, 'sprints.sprints') %}
+    <div class="modal fade" id="editBacklogModal" tabindex="-1" aria-labelledby="editBacklogModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('sprints.edit_sprint_backlog') }}">
+                    <input type="hidden" id="edit_backlog_id" name="backlog_id">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editBacklogModalLabel">编辑待办事项</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit_story_points" class="form-label">故事点</label>
+                            <input type="number" class="form-control" id="edit_story_points" name="story_points" step="0.5">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_status" class="form-label">状态</label>
+                            <select class="form-select" id="edit_status" name="status">
+                                <option value="待处理">待处理</option>
+                                <option value="开发中">开发中</option>
+                                <option value="测试中">测试中</option>
+                                <option value="已完成">已完成</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_priority" class="form-label">优先级</label>
+                            <select class="form-select" id="edit_priority" name="priority">
+                                <option value="P0">P0 - 最高</option>
+                                <option value="P1">P1 - 高</option>
+                                <option value="P2">P2 - 中</option>
+                                <option value="P3">P3 - 一般</option>
+                                <option value="P4">P4 - 低</option>
+                                <option value="P5">P5 - 最低</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_assignee_id" class="form-label">负责人</label>
+                            <select class="form-select" id="edit_assignee_id" name="assignee_id">
+                                <option value="">未分配</option>
+                                {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <script src="{{ url_for('static', filename='bootstrap.min.js') }}"></script>
+    <script>
+        // 编辑待办事项模态框数据填充
+        var editBacklogModal = document.getElementById('editBacklogModal');
+        if (editBacklogModal) {
+            editBacklogModal.addEventListener('show.bs.modal', function (event) {
+                var button = event.relatedTarget;
+                var backlogId = button.getAttribute('data-id');
+                var storyPoints = button.getAttribute('data-story-points');
+                var status = button.getAttribute('data-status');
+                var priority = button.getAttribute('data-priority');
+                var assigneeId = button.getAttribute('data-assignee-id');
+
+                var modal = this;
+                modal.querySelector('#edit_backlog_id').value = backlogId;
+                modal.querySelector('#edit_story_points').value = storyPoints;
+                modal.querySelector('#edit_status').value = status;
+                modal.querySelector('#edit_priority').value = priority;
+                modal.querySelector('#edit_assignee_id').value = assigneeId;
+            });
+        }
+
+        // 处理从迭代中移除用户故事的操作
+        function handleRemoveFromSprint(e) {
+            if (e.target && e.target.classList.contains('remove-from-sprint-btn')) {
+                e.preventDefault();
+                var backlogId = e.target.getAttribute('data-id');
+                var storyTitle = e.target.getAttribute('data-story');
+
+                if (confirm('确定要从当前迭代中移除用户故事 "' + storyTitle + '" 吗？')) {
+                    fetch('/sprint/backlog/' + backlogId + '/remove', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('已成功从迭代中移除用户故事');
+                            // 重新加载页面以显示更新后的内容
+                            location.reload();
+                        } else {
+                            alert('操作失败: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('操作失败: ' + error);
+                    });
+                }
+            }
+        }
+
+        // 确保只绑定一次事件监听器
+        document.removeEventListener('click', handleRemoveFromSprint);
+        document.addEventListener('click', handleRemoveFromSprint);
+    </script>
+</body>
+</html>
+
+</body>
+</html>

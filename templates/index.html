@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>敏捷开发 - 首页</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-5">
+        <h3 class="mb-4">敏捷开发平台</h3>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">功能介绍</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>欢迎使用敏捷开发平台！这是一个基于敏捷估算扑克方法的协作式任务估算工具，帮助开发团队更准确地评估用户故事或任务的工作量。</p>
+                        <h6>主要功能：</h6>
+                        <ul>
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>功能点管理</strong> - 组织和分类功能需求</li>
+                            {% endif %}
+                            <li><strong>团队估算</strong> - 支持多人同时参与估算过程</li>
+                            <li><strong>估算历史记录</strong> - 查看过往估算记录</li>
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>系统功能管理</strong> - 配置系统功能权限</li>
+                            {% endif %}
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>系统用户管理</strong> - 管理系统用户</li>
+                            {% endif %}
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>敏捷开发知识管理</strong> - 管理敏捷开发相关知识</li>
+                            {% endif %}
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>项目信息管理</strong> - 管理项目信息树形结构</li>
+                            {% endif %}
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>迭代管理</strong> - 管理迭代和待办事项列表</li>
+                            {% endif %}
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>用户故事管理</strong> - 创建和管理用户故事</li>
+                            {% endif %}
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li><strong>任务管理</strong> - 管理用户故事任务</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">使用指南</h5>
+                    </div>
+                    <div class="card-body">
+                        <ol>
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                            <li>创建功能点和用户故事</li>
+                            {% endif %}
+                            <li>团队成员进入估算房间</li>
+                            <li>每人独立选择代表工作量的卡片</li>
+                            <li>所有人选择完毕后展示结果</li>
+                            <li>讨论差异并达成共识</li>
+                            <li>记录最终估算结果</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">快速开始</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">点击下方按钮开始使用敏捷估算扑克：</p>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('estimation.estimate') }}" class="btn btn-primary">敏捷估算扑克</a>
+                        </div>
+                        {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled %}
+                        <hr>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('admin.history') }}" class="btn btn-outline-primary">查看估算历史记录</a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if user and session.features %}
+                        <hr>
+                        <div class="d-grid gap-2">
+                            {% if system_features and 'users.users' in system_features and system_features['users.users'].is_enabled %}
+                            <a href="{{ url_for('users.users') }}" class="btn btn-secondary">管理用户</a>
+                            {% endif %}
+                            {% if system_features and 'knowledge.manage' in system_features and system_features['knowledge.manage'].is_enabled %}
+                            <a href="{{ url_for('knowledge.knowledge') }}" class="btn btn-secondary">敏捷开发知识管理</a>
+                            {% endif %}
+                            {% if system_features and 'knowledge.knowledge_view' in system_features and system_features['knowledge.knowledge_view'].is_enabled %}
+                            <a href="{{ url_for('knowledge.knowledge_view') }}" class="btn btn-secondary">敏捷开发知识库</a>
+                            {% endif %}
+                            {% if system_features and 'projects.projects' in system_features and system_features['projects.projects'].is_enabled %}
+                            <a href="{{ url_for('projects.projects') }}" class="btn btn-secondary">项目信息管理</a>
+                            {% endif %}
+                            {% if system_features and 'sprints.sprints' in system_features and system_features['sprints.sprints'].is_enabled %}
+                            <a href="{{ url_for('sprints.sprints') }}" class="btn btn-secondary">迭代管理</a>
+                            {% endif %}
+                            {% if system_features and 'user_stories.user_stories' in system_features and system_features['user_stories.user_stories'].is_enabled %}
+                            <a href="{{ url_for('user_stories.user_stories') }}" class="btn btn-secondary">用户故事管理</a>
+                            {% endif %}
+                            {% if system_features and 'tasks.tasks' in system_features and system_features['tasks.tasks'].is_enabled %}
+                            <a href="{{ url_for('tasks.tasks') }}" class="btn btn-secondary">任务管理</a>
+                            {% endif %}
+                            {% if system_features and 'system_features.system_features' in system_features and system_features['system_features.system_features'].is_enabled %}
+                            <a href="{{ url_for('system_features.system_features') }}" class="btn btn-secondary">系统功能管理</a>
+                            {% endif %}
+                        </div>
+                        {% elif user %}
+                        <!-- 普通用户可见的功能 -->
+                        <hr>
+                        <div class="d-grid gap-2">
+                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled and system_features['features.features'].is_public %}
+                            <a href="{{ url_for('features.features') }}" class="btn btn-outline-secondary">功能点管理</a>
+                            {% endif %}
+                            {% if system_features and 'user_stories.user_stories' in system_features and system_features['user_stories.user_stories'].is_enabled and system_features['user_stories.user_stories'].is_public %}
+                            <a href="{{ url_for('user_stories.user_stories') }}" class="btn btn-outline-secondary">用户故事管理</a>
+                            {% endif %}
+                            {% if system_features and 'sprints.sprints' in system_features and system_features['sprints.sprints'].is_enabled and system_features['sprints.sprints'].is_public %}
+                            <a href="{{ url_for('sprints.sprints') }}" class="btn btn-outline-secondary">迭代管理</a>
+                            {% endif %}
+                            {% if system_features and 'tasks.tasks' in system_features and system_features['tasks.tasks'].is_enabled and system_features['tasks.tasks'].is_public %}
+                            <a href="{{ url_for('tasks.tasks') }}" class="btn btn-outline-secondary">任务管理</a>
+                            {% endif %}
+                            {% if system_features and 'users.users' in system_features and system_features['users.users'].is_enabled and system_features['users.users'].is_public %}
+                            <a href="{{ url_for('users.users') }}" class="btn btn-outline-secondary">用户管理</a>
+                            {% endif %}
+                            {% if system_features and 'knowledge.knowledge_view' in system_features and system_features['knowledge.knowledge_view'].is_enabled and system_features['knowledge.knowledge_view'].is_public %}
+                            <a href="{{ url_for('knowledge.knowledge_view') }}" class="btn btn-outline-secondary">敏捷开发知识</a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

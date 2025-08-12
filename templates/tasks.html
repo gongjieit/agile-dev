@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>任务管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .story-item {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            background-color: #fff;
+        }
+        .story-item:hover {
+            background-color: #f8f9fa;
+            transform: translateY(-2px);
+        }
+        .story-item.selected {
+            background-color: #e9f0ff;
+        }
+        .task-list-container {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .task-item {
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .task-header {
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .task-body {
+            padding: 15px;
+        }
+        .task-footer {
+            padding: 10px 15px;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+        }
+        .status-badge {
+            font-size: 0.8em;
+        }
+        .priority-high { color: #dc3545; }
+        .priority-medium { color: #ffc107; }
+        .priority-low { color: #28a745; }
+
+        /* 自定义用户故事列表样式 */
+        .story-item .col-2 {
+            border-top-right-radius: 5px;
+            border-bottom-right-radius: 5px;
+        }
+
+        /* 任务统计样式 */
+        .task-stats-container {
+            min-width: 60px;
+        }
+
+        .task-stats-total .badge {
+            font-size: 1rem;
+            min-width: 30px;
+        }
+
+        .task-stats-details .badge {
+            font-size: 0.7rem;
+            min-width: 20px;
+        }
+
+        /* 响应式优化 */
+        @media (max-width: 768px) {
+            .story-item .col-10, .story-item .col-2 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .story-item .col-2 {
+                border-top-right-radius: 0;
+                border-bottom-right-radius: 5px;
+                border-bottom-left-radius: 5px;
+            }
+        }
+    </style>
+
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <h3 class="mb-4">任务管理</h3>
+        
+        <div class="row">
+            <!-- 左侧：迭代和用户故事选择 -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">选择用户故事</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 迭代选择 -->
+                        <div class="mb-3">
+                            <label for="sprint-select" class="form-label">选择迭代</label>
+                            <select class="form-select" id="sprint-select">
+                                <option value="">请选择迭代</option>
+                                {% for sprint in sprints %}
+                                <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- 用户故事列表 -->
+                        <div class="mt-4">
+                            <h6>用户故事列表</h6>
+                            <div id="stories-container" class="list-group">
+                                <p class="text-muted">请选择一个迭代查看用户故事</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：任务管理 -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">任务管理</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 添加任务按钮 -->
+                        <div class="mt-3" id="add-task-container" style="display: none;">
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                                添加任务
+                            </button>
+                        </div>
+                        
+                        <div id="tasks-container">
+                            <p class="text-muted">请选择一个用户故事查看和管理任务</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加任务模态框 -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addTaskModalLabel">添加任务</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-task-form">
+                        <input type="hidden" id="story-id-input" name="story_id">
+                        <div class="mb-3">
+                            <label for="task-id" class="form-label">任务编号</label>
+                            <input type="text" class="form-control" id="task-id" name="task_id" placeholder="系统将自动生成编号">
+                        </div>
+                        <div class="mb-3">
+                            <label for="task-name" class="form-label">任务名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="task-name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="task-description" class="form-label">任务描述</label>
+                            <textarea class="form-control" id="task-description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="task-status" class="form-label">状态</label>
+                                    <select class="form-select" id="task-status" name="status">
+                                        <option value="未开始">未开始</option>
+                                        <option value="进行中">进行中</option>
+                                        <option value="已完成">已完成</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="task-type" class="form-label">任务类型</label>
+                                    <select class="form-select" id="task-type" name="task_type">
+                                        <option value="">请选择</option>
+                                        <option value="界面设计">界面设计</option>
+                                        <option value="前端功能开发">前端功能开发</option>
+                                        <option value="后端功能开发">后端功能开发</option>
+                                        <option value="详细设计">详细设计</option>
+                                        <option value="功能测试">功能测试</option>
+                                        <option value="代码审查">代码审查</option>
+                                        <option value="文档编写">文档编写</option>
+                                        <option value="迭代评审">迭代评审</option>
+                                        <option value="部署上线">部署上线</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="task-priority" class="form-label">优先级</label>
+                                    <select class="form-select" id="task-priority" name="priority">
+                                        <option value="高">高</option>
+                                        <option value="中" selected>中</option>
+                                        <option value="低">低</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="task-assignee" class="form-label">负责人</label>
+                                    <select class="form-select" id="task-assignee" name="assignee_id">
+                                        <option value="">请选择</option>
+                                        {% for user in users if users is defined %}
+                                        <option value="{{ user.id }}">{{ user.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="task-start-date" class="form-label">开始日期 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="task-start-date" name="start_date">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="task-end-date" class="form-label">结束日期 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="task-end-date" name="end_date">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="save-task-btn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 编辑任务模态框 -->
+    <div class="modal fade" id="editTaskModal" tabindex="-1" aria-labelledby="editTaskModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editTaskModalLabel">编辑任务</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-task-form">
+                        <input type="hidden" id="edit-task-id" name="task_id">
+                        <div class="mb-3">
+                            <label for="edit-task-id-display" class="form-label">任务编号</label>
+                            <input type="text" class="form-control" id="edit-task-id-display" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-task-name" class="form-label">任务名称 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit-task-name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-task-description" class="form-label">任务描述</label>
+                            <textarea class="form-control" id="edit-task-description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-task-status" class="form-label">状态</label>
+                                    <select class="form-select" id="edit-task-status" name="status">
+                                        <option value="未开始">未开始</option>
+                                        <option value="进行中">进行中</option>
+                                        <option value="已完成">已完成</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-task-type" class="form-label">任务类型</label>
+                                    <select class="form-select" id="edit-task-type" name="task_type">
+                                        <option value="">请选择</option>
+                                        <option value="界面设计">界面设计</option>
+                                        <option value="前端功能开发">前端功能开发</option>
+                                        <option value="后端功能开发">后端功能开发</option>
+                                        <option value="详细设计">详细设计</option>
+                                        <option value="功能测试">功能测试</option>
+                                        <option value="代码审查">代码审查</option>
+                                        <option value="文档编写">文档编写</option>
+                                        <option value="迭代评审">迭代评审</option>
+                                        <option value="部署上线">部署上线</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-task-priority" class="form-label">优先级</label>
+                                    <select class="form-select" id="edit-task-priority" name="priority">
+                                        <option value="高">高</option>
+                                        <option value="中">中</option>
+                                        <option value="低">低</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-task-assignee" class="form-label">负责人</label>
+                                    <select class="form-select" id="edit-task-assignee" name="assignee_id">
+                                        <option value="">请选择</option>
+                                        {% for user in users if users is defined %}
+                                        <option value="{{ user.id }}">{{ user.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-task-start-date" class="form-label">开始日期 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="edit-task-start-date" name="start_date">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="edit-task-end-date" class="form-label">结束日期 <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control" id="edit-task-end-date" name="end_date">
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="update-task-btn">更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 当前选中的故事ID
+        let selectedStoryId = null;
+        // 当前迭代ID
+        let currentSprintId = null;
+        
+        // 迭代选择变化事件
+        document.getElementById('sprint-select').addEventListener('change', function() {
+            const sprintId = this.value;
+            const storiesContainer = document.getElementById('stories-container');
+            
+            // 清空现有内容
+            storiesContainer.innerHTML = '';
+            document.getElementById('tasks-container').innerHTML = '<p class="text-muted">请选择一个用户故事查看和管理任务</p>';
+            document.getElementById('add-task-container').style.display = 'none';
+            selectedStoryId = null;
+            currentSprintId = sprintId;
+            
+            if (!sprintId) {
+                storiesContainer.innerHTML = '<p class="text-muted">请选择一个迭代查看用户故事</p>';
+                return;
+            }
+            
+            // 获取迭代下的用户故事
+            fetch(`/get_stories_by_sprint/${sprintId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Received data:', data); // 调试信息
+                    if (data.success) {
+                        renderStories(storiesContainer, data.user_stories);
+                    } else {
+                        storiesContainer.innerHTML = '<p class="text-danger">加载失败: ' + data.message + '</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error); // 调试信息
+                    storiesContainer.innerHTML = '<p class="text-danger">加载失败: ' + error + '</p>';
+                });
+        });
+        
+        // 渲染用户故事列表
+        function renderStories(container, stories) {
+            console.log('Rendering stories:', stories); // 调试信息
+            if (!stories || stories.length === 0) {
+                container.innerHTML = '<p class="text-muted">该迭代下暂无用户故事</p>';
+                return;
+            }
+            
+            const list = document.createElement('div');
+            list.className = 'list-group';
+            
+            stories.forEach(story => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item story-item border rounded mb-2 shadow-sm';
+                item.dataset.storyId = story.id;
+                // 根据任务数设置显示文本
+                const taskCountBadge = story.task_count > 0
+                    ? `<span class="badge bg-info-subtle text-info-emphasis rounded-pill">${story.task_count} 任务</span>`
+                    : '<span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill">无任务</span>';
+
+                // 根据优先级设置颜色
+                let priorityClass = 'bg-primary';
+                switch(story.priority) {
+                    case 'P0':
+                        priorityClass = 'bg-danger';
+                        break;
+                    case 'P1':
+                        priorityClass = 'bg-warning text-dark';
+                        break;
+                    case 'P2':
+                        priorityClass = 'bg-info';
+                        break;
+                    case 'P3':
+                        priorityClass = 'bg-primary';
+                        break;
+                    case 'P4':
+                        priorityClass = 'bg-secondary';
+                        break;
+                    case 'P5':
+                        priorityClass = 'bg-light text-dark';
+                        break;
+                }
+
+                // 根据状态设置颜色
+                let statusClass = 'bg-secondary';
+                switch(story.status) {
+                    case '待处理':
+                        statusClass = 'bg-secondary';
+                        break;
+                    case '开发中':
+                        statusClass = 'bg-primary';
+                        break;
+                    case '测试中':
+                        statusClass = 'bg-warning text-dark';
+                        break;
+                    case '已完成':
+                        statusClass = 'bg-success';
+                        break;
+                }
+
+                item.innerHTML = `
+                    <div class="row g-0">
+                        <div class="col-10">
+                            <div class="px-3 py-2">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <h6 class="mb-0 fw-semibold text-dark">${story.title}</h6>
+                                    <div>
+                                        <span class="badge ${statusClass} me-1">${story.status}</span>
+                                        <span class="badge ${priorityClass}">${story.priority}</span>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mt-1">
+                                    <small class="text-muted me-2">
+                                        <i class="bi bi-hash"></i> ${story.story_id || '未编号'}
+                                    </small>
+                                    ${story.effort ? `<small class="text-muted"><i class="bi bi-clock"></i> ${story.effort} 人天</small>` : ''}
+                                </div>
+                                <p class="mb-0 mt-2 text-muted small">${story.description || '无描述'}</p>
+                            </div>
+                        </div>
+                        <div class="col-2 d-flex align-items-center justify-content-end">
+                            <div class="task-stats-container text-end">
+                                <div class="task-stats-total">
+                                    <span class="badge bg-info" title="总任务数">${story.task_stats.total}</span>
+                                </div>
+                                <div class="task-stats-details d-flex">
+                                    <span class="badge bg-secondary me-1" title="未开始">${story.task_stats['未开始']}</span>
+                                    <span class="badge bg-warning text-dark me-1" title="进行中">${story.task_stats['进行中']}</span>
+                                    <span class="badge bg-success" title="已完成">${story.task_stats['已完成']}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                item.addEventListener('click', function() {
+                    // 移除之前选中的样式
+                    document.querySelectorAll('.story-item').forEach(el => {
+                        el.classList.remove('selected', 'border-primary', 'border-2');
+                    });
+                    
+                    // 添加选中样式
+                    this.classList.add('selected', 'border-primary', 'border-2');
+                    
+                    // 加载任务
+                    loadTasks(story.id);
+                });
+                
+                list.appendChild(item);
+            });
+            
+            // 清空容器并添加列表
+            container.innerHTML = '';
+            container.appendChild(list);
+        }
+        
+        // 加载任务
+        function loadTasks(storyId) {
+            selectedStoryId = storyId;
+            const tasksContainer = document.getElementById('tasks-container');
+            const addTaskContainer = document.getElementById('add-task-container');
+            
+            // 显示加载状态
+            tasksContainer.innerHTML = '<p class="text-muted">加载中...</p>';
+            addTaskContainer.style.display = 'none';
+            
+            // 获取任务
+            fetch(`/get_tasks_by_story/${storyId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderTasks(tasksContainer, data.tasks, data.users);
+                        // 设置添加任务表单中的故事ID
+                        document.getElementById('story-id-input').value = storyId;
+                        // 显示添加任务按钮
+                        addTaskContainer.style.display = 'block';
+                    } else {
+                        tasksContainer.innerHTML = '<p class="text-danger">加载失败: ' + data.message + '</p>';
+                    }
+                })
+                .catch(error => {
+                    tasksContainer.innerHTML = '<p class="text-danger">加载失败: ' + error + '</p>';
+                });
+        }
+        
+        // 渲染任务列表
+        function renderTasks(container, tasks, users) {
+            // 创建用户字典
+            const usersDict = {};
+            users.forEach(user => {
+                usersDict[user.id] = user.name;
+            });
+            
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center">
+                        <p class="text-muted">该用户故事下暂无任务</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let tasksHtml = '';
+            tasks.forEach(task => {
+                tasksHtml += `
+                    <div class="task-item">
+                        <div class="task-header">
+                            <div>
+                                <h6 class="mb-0">${task.name}</h6>
+                                <small class="text-muted">${task.task_id || '未编号'}</small>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary status-badge">${task.status}</span>
+                                <span class="badge ${getPriorityClass(task.priority)} status-badge">${task.priority}</span>
+                            </div>
+                        </div>
+                        <div class="task-body">
+                            <p class="mb-2">${task.description || ''}</p>
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <small><strong>类型:</strong> ${task.task_type || '未指定'}</small>
+                                </div>
+                                <div>
+                                    <small><strong>负责人:</strong> ${task.assignee_name || '未指定'}</small>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <div>
+                                    <small><strong>开始日期:</strong> ${task.start_date || '未指定'}</small>
+                                </div>
+                                <div>
+                                    <small><strong>结束日期:</strong> ${task.end_date || '未指定'}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="task-footer">
+                            <small class="text-muted">创建于 ${task.created_at || ''}</small>
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary edit-task-btn" data-task-id="${task.id}">编辑</button>
+                                <button class="btn btn-sm btn-outline-danger delete-task-btn" data-task-id="${task.id}">删除</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = tasksHtml;
+            
+            // 绑定编辑和删除事件
+            document.querySelectorAll('.edit-task-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const taskId = this.dataset.taskId;
+                    editTask(taskId);
+                });
+            });
+            
+            document.querySelectorAll('.delete-task-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const taskId = this.dataset.taskId;
+                    deleteTask(taskId);
+                });
+            });
+        }
+        
+        // 获取优先级样式类
+        function getPriorityClass(priority) {
+            switch (priority) {
+                case '高':
+                    return 'bg-danger text-white';
+                case '中':
+                    return 'bg-warning text-dark';
+                case '低':
+                    return 'bg-success text-white';
+                default:
+                    return 'bg-secondary';
+            }
+        }
+        
+        // 保存任务
+        document.getElementById('save-task-btn').addEventListener('click', function() {
+            const form = document.getElementById('add-task-form');
+            const formData = new FormData(form);
+
+            // 验证必填字段
+            const startDate = formData.get('start_date');
+            const endDate = formData.get('end_date');
+            const taskName = formData.get('name');
+
+            if (!taskName) {
+                alert('任务名称不能为空');
+                return;
+            }
+
+            if (!startDate) {
+                alert('开始日期不能为空');
+                return;
+            }
+
+            if (!endDate) {
+                alert('结束日期不能为空');
+                return;
+            }
+
+            // 如果任务编号为空，则删除该字段，确保后端自动生成编号
+            if (!formData.get('task_id') || formData.get('task_id').trim() === '') {
+                formData.delete('task_id');
+            }
+            
+            fetch(`/add_task/${selectedStoryId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 关闭模态框
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addTaskModal'));
+                    modal.hide();
+                    
+                    // 重置表单
+                    form.reset();
+                    
+                    // 重新加载任务
+                    loadTasks(selectedStoryId);
+                    
+                    // 显示成功消息
+                    alert(data.message);
+                } else {
+                    alert('添加失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('添加失败: ' + error);
+            });
+        });
+        
+        // 编辑任务
+        function editTask(taskId) {
+            // 获取任务详情并填充到编辑表单中
+            fetch(`/get_task_detail/${taskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const task = data.task;
+
+                        // 填充表单字段
+                        document.getElementById('edit-task-id').value = task.id;
+                        document.getElementById('edit-task-id-display').value = task.task_id;
+                        document.getElementById('edit-task-name').value = task.name;
+                        document.getElementById('edit-task-description').value = task.description || '';
+                        document.getElementById('edit-task-status').value = task.status;
+                        document.getElementById('edit-task-type').value = task.task_type || '';
+                        document.getElementById('edit-task-priority').value = task.priority;
+
+                        // 设置负责人
+                        const assigneeSelect = document.getElementById('edit-task-assignee');
+                        if (task.assignee_id) {
+                            assigneeSelect.value = task.assignee_id;
+                        } else {
+                            assigneeSelect.selectedIndex = 0;
+                        }
+
+                        // 设置日期
+                        document.getElementById('edit-task-start-date').value = task.start_date || '';
+                        document.getElementById('edit-task-end-date').value = task.end_date || '';
+
+                        // 打开模态框
+                        const modal = new bootstrap.Modal(document.getElementById('editTaskModal'));
+                        modal.show();
+                    } else {
+                        alert('获取任务信息失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('获取任务信息失败: ' + error);
+                });
+        }
+        
+        // 更新任务
+        document.getElementById('update-task-btn').addEventListener('click', function() {
+            const taskId = document.getElementById('edit-task-id').value;
+            const form = document.getElementById('edit-task-form');
+            const formData = new FormData(form);
+
+            // 验证必填字段
+            const startDate = formData.get('start_date');
+            const endDate = formData.get('end_date');
+            const taskName = formData.get('name');
+
+            if (!taskName) {
+                alert('任务名称不能为空');
+                return;
+            }
+
+            if (!startDate) {
+                alert('开始日期不能为空');
+                return;
+            }
+
+            if (!endDate) {
+                alert('结束日期不能为空');
+                return;
+            }
+
+            fetch(`/edit_task/${taskId}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 关闭模态框
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editTaskModal'));
+                    modal.hide();
+                    
+                    // 重新加载任务
+                    loadTasks(selectedStoryId);
+                    
+                    // 显示成功消息
+                    alert(data.message);
+                } else {
+                    alert('更新失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('更新失败: ' + error);
+            });
+        });
+        
+        // 删除任务
+        function deleteTask(taskId) {
+            if (!confirm('确定要删除这个任务吗？')) {
+                return;
+            }
+            
+            fetch(`/delete_task/${taskId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 重新加载任务
+                    loadTasks(selectedStoryId);
+                    
+                    // 显示成功消息
+                    alert(data.message);
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('删除失败: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>

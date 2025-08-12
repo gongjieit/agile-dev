@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>角色管理 - 敏捷开发工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+{% include 'navbar.html' %}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>角色管理</h3>
+        {% if check_user_role(session.user_id, 'admin') %}
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">添加角色</button>
+        {% endif %}
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <div class="card-body">
+            {% if roles %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>角色名称</th>
+                            <th>显示名称</th>
+                            <th>描述</th>
+                            <th>关联功能数</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for role in roles %}
+                        <tr>
+                            <td>{{ role.name }}</td>
+                            <td>{{ role.display_name }}</td>
+                            <td>{{ role.description or '无' }}</td>
+                            <td>{{ role.system_feature_ids|length }}</td>
+                            <td>{{ role.created_at.strftime('%Y-%m-%d %H:%M:%S') if role.created_at else '' }}</td>
+                            <td>
+                                {% if check_user_role(session.user_id, 'admin') %}
+                                <button class="btn btn-sm btn-outline-primary edit-role-btn"
+                                    data-id="{{ role.id }}"
+                                    data-name="{{ role.name }}"
+                                    data-display-name="{{ role.display_name }}"
+                                    data-description="{{ role.description or '' }}">编辑</button>
+                                <button class="btn btn-sm btn-outline-danger delete-role-btn"
+                                    data-id="{{ role.id }}"
+                                    data-name="{{ role.display_name }}">删除</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">暂无角色</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 添加角色模态框 -->
+<div class="modal fade" id="addRoleModal" tabindex="-1" aria-labelledby="addRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="addRoleForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addRoleModalLabel">添加角色</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="add_role_name" class="form-label">角色名称</label>
+                        <input type="text" class="form-control" id="add_role_name" name="name" required>
+                        <div class="form-text">系统内部使用的角色标识，如 admin、PO、SM 等</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_display_name" class="form-label">显示名称</label>
+                        <input type="text" class="form-control" id="add_display_name" name="display_name" required>
+                        <div class="form-text">在界面上显示的名称，如 管理员、产品负责人 等</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="add_description" class="form-label">描述</label>
+                        <textarea class="form-control" id="add_description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">系统功能权限</label>
+                        <div class="border p-3" style="max-height: 300px; overflow-y: auto;">
+                            {% for feature in system_features %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="feature_ids" value="{{ feature.id }}" id="add_feature_{{ feature.id }}">
+                                <label class="form-check-label" for="add_feature_{{ feature.id }}">
+                                    {{ feature.name }} ({{ feature.route_name }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑角色模态框 -->
+<div class="modal fade" id="editRoleModal" tabindex="-1" aria-labelledby="editRoleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="editRoleForm">
+                <input type="hidden" id="edit_role_id" name="role_id">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editRoleModalLabel">编辑角色</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_role_name" class="form-label">角色名称</label>
+                        <input type="text" class="form-control" id="edit_role_name" name="name" required>
+                        <div class="form-text">系统内部使用的角色标识，如 admin、PO、SM 等</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_display_name" class="form-label">显示名称</label>
+                        <input type="text" class="form-control" id="edit_display_name" name="display_name" required>
+                        <div class="form-text">在界面上显示的名称，如 管理员、产品负责人 等</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_description" class="form-label">描述</label>
+                        <textarea class="form-control" id="edit_description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">系统功能权限</label>
+                        <div class="border p-3" style="max-height: 300px; overflow-y: auto;">
+                            {% for feature in system_features %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="feature_ids" value="{{ feature.id }}" id="edit_feature_{{ feature.id }}">
+                                <label class="form-check-label" for="edit_feature_{{ feature.id }}">
+                                    {{ feature.name }} ({{ feature.route_name }})
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+<script>
+    // 添加角色表单提交
+    document.getElementById('addRoleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        fetch('/roles/add', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('角色添加成功');
+                location.reload();
+            } else {
+                alert('添加失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('添加失败: ' + error);
+        });
+    });
+
+    // 编辑角色按钮点击事件
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('edit-role-btn')) {
+            const roleId = e.target.getAttribute('data-id');
+            const roleName = e.target.getAttribute('data-name');
+            const displayName = e.target.getAttribute('data-display-name');
+            const description = e.target.getAttribute('data-description');
+
+            // 获取角色详情
+            fetch('/roles/get/' + roleId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const role = data.role;
+
+                    // 填充表单数据
+                    document.getElementById('edit_role_id').value = role.id;
+                    document.getElementById('edit_role_name').value = role.name;
+                    document.getElementById('edit_display_name').value = role.display_name;
+                    document.getElementById('edit_description').value = role.description || '';
+
+                    // 重置所有复选框
+                    document.querySelectorAll('#editRoleModal input[type="checkbox"]').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+
+                    // 选中角色关联的功能
+                    role.system_feature_ids.forEach(featureId => {
+                        const checkbox = document.getElementById('edit_feature_' + featureId);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                    });
+
+                    // 显示模态框
+                    const modal = new bootstrap.Modal(document.getElementById('editRoleModal'));
+                    modal.show();
+                } else {
+                    alert('获取角色信息失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('获取角色信息失败: ' + error);
+            });
+        }
+    });
+
+    // 编辑角色表单提交
+    document.getElementById('editRoleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const roleId = document.getElementById('edit_role_id').value;
+        const formData = new FormData(this);
+
+        fetch('/roles/edit/' + roleId, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('角色更新成功');
+                location.reload();
+            } else {
+                alert('更新失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('更新失败: ' + error);
+        });
+    });
+
+    // 删除角色按钮点击事件
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('delete-role-btn')) {
+            const roleId = e.target.getAttribute('data-id');
+            const roleName = e.target.getAttribute('data-name');
+
+            if (confirm('确定要删除角色 "' + roleName + '" 吗？')) {
+                fetch('/roles/delete/' + roleId, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('角色删除成功');
+                        location.reload();
+                    } else {
+                        alert('删除失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('删除失败: ' + error);
+                });
+            }
+        }
+    });
+</script>
+</body>
+</html>

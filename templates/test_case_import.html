@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>导入测试用例</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2>导入测试用例</h2>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>导入说明</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>请上传.xlsx格式的Excel文件，文件应包含以下列：</p>
+
+                        <p>注意：用例编号由系统自动生成，用例标题为必填项。</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>上传文件</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="file" class="form-label">选择Excel文件</label>
+                                <input class="form-control" type="file" id="file" name="file" accept=".xlsx" required>
+                                <div class="form-text">只支持.xlsx格式的文件</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">导入</button>
+                            <a href="{{ url_for('test_cases.test_cases') }}" class="btn btn-secondary">取消</a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

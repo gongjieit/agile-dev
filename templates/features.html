@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>功能点列表</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script>
+    function enableEdit(id) {
+        document.getElementById('name-'+id).removeAttribute('readonly');
+        document.getElementById('description-'+id).removeAttribute('readonly');
+        document.getElementById('project_name-'+id).removeAttribute('readonly');
+        document.getElementById('project_short_name-'+id).removeAttribute('readonly');
+        document.getElementById('menu-'+id).removeAttribute('readonly');
+        document.getElementById('page-'+id).removeAttribute('readonly');
+        // 调整文本域高度以适应内容
+        var descriptionField = document.getElementById('description-'+id);
+        descriptionField.style.height = 'auto';
+        descriptionField.style.height = (descriptionField.scrollHeight) + 'px';
+        document.getElementById('edit-btn-'+id).style.display = 'none';
+        document.getElementById('save-btn-'+id).style.display = 'inline-block';
+    }
+    </script>
+</head>
+<body class="bg-light">
+{% include 'navbar.html' %}
+<div class="container-fluid mt-5">
+    <!-- 添加面包屑导航 -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb breadcrumb-chevron">
+            <li class="breadcrumb-item"><a href="{{ url_for('auth.index') }}">首页</a></li>
+            <li class="breadcrumb-item active" aria-current="page">功能点管理</li>
+        </ol>
+    </nav>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">功能点管理</h3>
+        <a href="{{ url_for('user_stories.user_stories') }}" class="btn btn-secondary">管理用户故事</a>
+    </div>
+    
+    <div class="row">
+        <!-- 左侧：添加功能点表单 -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">添加功能点</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">功能点名称</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">功能点描述</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">添加</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧：功能点列表 -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">功能点列表</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>功能点名称</th>
+                                    <th>功能点描述</th>
+                                    <th>项目名</th>
+                                    <th>项目简称</th>
+                                    <th>菜单</th>
+                                    <th>页面</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for feature in feature_list %}
+                                <tr>
+                                    <td>{{ feature.id }}</td>
+                                    <form method="post" action="{{ url_for('features.edit_feature', feature_id=feature.id) }}" class="d-inline">
+                                    <td>
+                                        <input type="text" name="name" id="name-{{ feature.id }}" value="{{ feature.name }}" class="form-control form-control-sm d-inline" style="width: 200px;" readonly required>
+                                    </td>
+                                    <td>
+                                        <textarea name="description" id="description-{{ feature.id }}" class="form-control form-control-sm d-inline" style="width: 200px;" readonly>{{ feature.description or '' }}</textarea>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="project_name" id="project_name-{{ feature.id }}" value="{{ feature.project_name or '' }}" class="form-control form-control-sm" readonly>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="project_short_name" id="project_short_name-{{ feature.id }}" value="{{ feature.project_short_name or '' }}" class="form-control form-control-sm" readonly>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="menu" id="menu-{{ feature.id }}" value="{{ feature.menu or '' }}" class="form-control form-control-sm" readonly>
+                                    </td>
+                                    <td>
+                                        <input type="text" name="page" id="page-{{ feature.id }}" value="{{ feature.page or '' }}" class="form-control form-control-sm" readonly>
+                                    </td>
+                                    <td>{{ feature.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-secondary" id="edit-btn-{{ feature.id }}" onclick="enableEdit({{ feature.id }})">编辑</button>
+                                        <button type="submit" class="btn btn-sm btn-success" id="save-btn-{{ feature.id }}" style="display:none;">保存</button>
+                                    </td>
+                                    </form>
+                                    <td>
+                                        <form method="post" action="{{ url_for('features.delete_feature', feature_id=feature.id) }}" style="display:inline-block" onsubmit="return confirm('确定要删除该功能点吗？');">
+                                            <button type="submit" class="btn btn-sm btn-danger">删除</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

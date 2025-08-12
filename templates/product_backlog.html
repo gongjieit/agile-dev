@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>产品待办事项管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .priority-high {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .priority-medium {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .priority-low {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+
+        .export-btn {
+            margin-right: 10px;
+        }
+
+        .action-buttons .btn {
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3>产品待办事项</h3>
+                <div>
+                    <button class="btn btn-success export-btn" onclick="exportProductBacklog()">
+                        <i class="fas fa-file-export"></i> 导出需求
+                    </button>
+                    <button class="btn btn-info export-btn" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="fas fa-file-import"></i> 导入需求
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBacklogModal">
+                        <i class="fas fa-plus"></i> 添加需求
+                    </button>
+                </div>
+            </div>
+
+            <!-- 筛选区域 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">筛选条件</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="filterProject" class="form-label">项目</label>
+                            <select class="form-select" id="filterProject" onchange="filterProductBacklog()">
+                                <option value="">全部项目</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filterStatus" class="form-label">状态</label>
+                            <select class="form-select" id="filterStatus" onchange="filterProductBacklog()">
+                                <option value="">全部状态</option>
+                                <option value="待讨论">待讨论</option>
+                                <option value="已澄清">已澄清</option>
+                                <option value="已纳入冲刺">已纳入冲刺</option>
+                                <option value="已完成">已完成</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="filterPriority" class="form-label">优先级</label>
+                            <select class="form-select" id="filterPriority" onchange="filterProductBacklog()">
+                                <option value="">全部优先级</option>
+                                <option value="P0">P0 - 最高</option>
+                                <option value="P1">P1 - 很高</option>
+                                <option value="P2">P2 - 高</option>
+                                <option value="P3">P3 - 中</option>
+                                <option value="P4">P4 - 低</option>
+                                <option value="P5">P5 - 最低</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="searchKeyword" class="form-label">关键词</label>
+                            <input type="text" class="form-control" id="searchKeyword" placeholder="标题或描述关键词" onkeyup="filterProductBacklog()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 产品待办事项列表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">需求列表</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>需求编号</th>
+                                    <th>所属项目</th>
+                                    <th>功能模块</th>
+                                    <th>需求标题</th>
+                                    <th>需求类型</th>
+                                    <th>责任人</th>
+                                    <th>优先级</th>
+                                    <th>需求状态</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productBacklogTableBody">
+                                {% for backlog in product_backlogs %}
+                                <tr data-id="{{ backlog.id }}"
+                                    data-priority="{{ backlog.priority }}"
+                                    data-status="{{ backlog.status }}"
+                                    data-project="{{ backlog.project_id or '' }}"
+                                    data-title="{{ backlog.title }}"
+                                    data-description="{{ backlog.description or '' }}">
+                                    <td>{{ backlog.requirement_id or '未分配' }}</td>
+                                    <td>{{ backlog.project.name if backlog.project else '未分配' }}</td>
+                                    <td>{{ backlog.project_module.name if backlog.project_module else '未分配' }}</td>
+                                    <td>{{ backlog.title }}</td>
+                                    <td>{{ backlog.requirement_type or '未指定' }}</td>
+                                    <td>{{ backlog.customer_owner.name if backlog.customer_owner else '未分配' }}</td>
+                                    <td>
+                                        <span class="status-badge
+                                            {% if backlog.priority == 'P0' or backlog.priority == 'P1' %}priority-high
+                                            {% elif backlog.priority == 'P2' or backlog.priority == 'P3' %}priority-medium
+                                            {% elif backlog.priority == 'P4' or backlog.priority == 'P5' %}priority-low
+                                            {% endif %}">
+                                            {{ backlog.priority or '未指定' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if backlog.status == '待讨论' %}bg-warning
+                                            {% elif backlog.status == '已澄清' %}bg-info
+                                            {% elif backlog.status == '已纳入冲刺' %}bg-primary
+                                            {% elif backlog.status == '已完成' %}bg-success
+                                            {% else %}bg-secondary
+                                            {% endif %}">
+                                            {{ backlog.status or '未指定' }}
+                                        </span>
+                                    </td>
+                                    <td>{{ backlog.created_at.strftime('%Y-%m-%d') if backlog.created_at else '' }}</td>
+                                    <td class="action-buttons">
+                                        <button class="btn btn-sm btn-primary" onclick="editProductBacklog({{ backlog.id }})">
+                                            编辑
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteProductBacklog({{ backlog.id }})">
+                                            删除
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center">暂无产品待办事项</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加需求模态框 -->
+<div class="modal fade" id="addBacklogModal" tabindex="-1" aria-labelledby="addBacklogModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addBacklogModalLabel">添加产品待办事项</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addBacklogForm">
+                    <div class="mb-3">
+                        <label for="addTitle" class="form-label">需求标题 *</label>
+                        <input type="text" class="form-control" id="addTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="addDescription" class="form-label">需求描述</label>
+                        <textarea class="form-control" id="addDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addProject" class="form-label">所属项目</label>
+                                <select class="form-select" id="addProject" onchange="loadProjectModules('add')">
+                                    <option value="">请选择</option>
+                                    {% for project in projects %}
+                                    <option value="{{ project.id }}">{{ project.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addProjectModule" class="form-label">功能模块</label>
+                                <select class="form-select" id="addProjectModule">
+                                    <option value="">请选择所属项目以查看功能模块</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addRequirementType" class="form-label">需求类型</label>
+                                <select class="form-select" id="addRequirementType">
+                                    <option value="">请选择</option>
+                                    <option value="用户故事">用户故事</option>
+                                    <option value="Bug修复">Bug修复</option>
+                                    <option value="技术优化">技术优化</option>
+                                    <option value="研究任务">研究任务</option>
+                                    <option value="其他">其他</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addStatus" class="form-label">需求状态</label>
+                                <select class="form-select" id="addStatus">
+                                    <option value="待讨论">待讨论</option>
+                                    <option value="已澄清">已澄清</option>
+                                    <option value="已纳入冲刺">已纳入冲刺</option>
+                                    <option value="已完成">已完成</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addCustomerOwner" class="form-label">责任人（甲方）</label>
+                                <select class="form-select" id="addCustomerOwner">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addAnalyst" class="form-label">需求分析人员</label>
+                                <select class="form-select" id="addAnalyst">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addPriority" class="form-label">优先级</label>
+                                <select class="form-select" id="addPriority">
+                                    <option value="P3">P3 - 中</option>
+                                    <option value="P0">P0 - 最高</option>
+                                    <option value="P1">P1 - 很高</option>
+                                    <option value="P2">P2 - 高</option>
+                                    <option value="P4">P4 - 低</option>
+                                    <option value="P5">P5 - 最低</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="addProgress" class="form-label">执行进度</label>
+                                <select class="form-select" id="addProgress">
+                                    <option value="未处理">未处理</option>
+                                    <option value="分析中">分析中</option>
+                                    <option value="已确认">已确认</option>
+                                    <option value="开发中">开发中</option>
+                                    <option value="测试中">测试中</option>
+                                    <option value="验收中">验收中</option>
+                                    <option value="已上线">已上线</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="addRelatedInfo" class="form-label">关联信息</label>
+                        <input type="text" class="form-control" id="addRelatedInfo" placeholder="需求文档、UI设计等链接">
+                    </div>
+                    <div class="mb-3">
+                        <label for="addTags" class="form-label">标签</label>
+                        <input type="text" class="form-control" id="addTags" placeholder="用逗号分隔多个标签">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddBacklog()">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑需求模态框 -->
+<div class="modal fade" id="editBacklogModal" tabindex="-1" aria-labelledby="editBacklogModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editBacklogModalLabel">编辑产品待办事项</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBacklogForm">
+                    <input type="hidden" id="editBacklogId">
+                    <div class="mb-3">
+                        <label for="editTitle" class="form-label">需求标题 *</label>
+                        <input type="text" class="form-control" id="editTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editDescription" class="form-label">需求描述</label>
+                        <textarea class="form-control" id="editDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editProject" class="form-label">所属项目</label>
+                                <select class="form-select" id="editProject" onchange="loadProjectModules('edit')">
+                                    <option value="">请选择</option>
+                                    {% for project in projects %}
+                                    <option value="{{ project.id }}">{{ project.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editProjectModule" class="form-label">功能模块</label>
+                                <select class="form-select" id="editProjectModule">
+                                    <option value="">请选择所属项目以查看功能模块</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editRequirementType" class="form-label">需求类型</label>
+                                <select class="form-select" id="editRequirementType">
+                                    <option value="">请选择</option>
+                                    <option value="用户故事">用户故事</option>
+                                    <option value="Bug修复">Bug修复</option>
+                                    <option value="技术优化">技术优化</option>
+                                    <option value="研究任务">研究任务</option>
+                                    <option value="其他">其他</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editStatus" class="form-label">需求状态</label>
+                                <select class="form-select" id="editStatus">
+                                    <option value="待讨论">待讨论</option>
+                                    <option value="已澄清">已澄清</option>
+                                    <option value="已纳入冲刺">已纳入冲刺</option>
+                                    <option value="已完成">已完成</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editCustomerOwner" class="form-label">责任人（甲方）</label>
+                                <select class="form-select" id="editCustomerOwner">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editAnalyst" class="form-label">需求分析人员</label>
+                                <select class="form-select" id="editAnalyst">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                    <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPriority" class="form-label">优先级</label>
+                                <select class="form-select" id="editPriority">
+                                    <option value="P3">P3 - 中</option>
+                                    <option value="P0">P0 - 最高</option>
+                                    <option value="P1">P1 - 很高</option>
+                                    <option value="P2">P2 - 高</option>
+                                    <option value="P4">P4 - 低</option>
+                                    <option value="P5">P5 - 最低</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editProgress" class="form-label">执行进度</label>
+                                <select class="form-select" id="editProgress">
+                                    <option value="未处理">未处理</option>
+                                    <option value="分析中">分析中</option>
+                                    <option value="已确认">已确认</option>
+                                    <option value="开发中">开发中</option>
+                                    <option value="测试中">测试中</option>
+                                    <option value="验收中">验收中</option>
+                                    <option value="已上线">已上线</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRelatedInfo" class="form-label">关联信息</label>
+                        <input type="text" class="form-control" id="editRelatedInfo" placeholder="需求文档、UI设计等链接">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editTags" class="form-label">标签</label>
+                        <input type="text" class="form-control" id="editTags" placeholder="用逗号分隔多个标签">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditBacklog()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导入需求模态框 -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">导入需求列表</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="importFile" class="form-label">选择Excel文件</label>
+                        <input type="file" class="form-control" id="importFile" accept=".xlsx" required>
+                        <div class="form-text">请上传.xlsx格式的文件</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitImport()">导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+<script>
+    // 加载项目模块
+    function loadProjectModules(prefix) {
+        const projectId = document.getElementById(prefix + 'Project').value;
+        const moduleSelect = document.getElementById(prefix + 'ProjectModule');
+
+        // 清空现有选项
+        moduleSelect.innerHTML = '<option value="">请选择</option>';
+
+        if (!projectId) {
+            moduleSelect.innerHTML = '<option value="">请选择所属项目以查看功能模块</option>';
+            return;
+        }
+
+        // 发送请求获取项目下的功能模块
+        fetch(`/projects/${projectId}/modules`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    moduleSelect.innerHTML = '<option value="">请选择</option>';
+                    data.modules.forEach(module => {
+                        const option = document.createElement('option');
+                        option.value = module.id;
+                        option.textContent = module.name;
+                        moduleSelect.appendChild(option);
+                    });
+                } else {
+                    moduleSelect.innerHTML = '<option value="">加载模块失败</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading modules:', error);
+                moduleSelect.innerHTML = '<option value="">加载模块失败</option>';
+            });
+    }
+
+    // 添加产品待办事项
+    function submitAddBacklog() {
+        const formData = new FormData();
+        formData.append('title', document.getElementById('addTitle').value);
+        formData.append('description', document.getElementById('addDescription').value);
+        formData.append('requirement_type', document.getElementById('addRequirementType').value);
+        formData.append('customer_owner_id', document.getElementById('addCustomerOwner').value);
+        formData.append('priority', document.getElementById('addPriority').value);
+        formData.append('status', document.getElementById('addStatus').value);
+        formData.append('project_id', document.getElementById('addProject').value);
+        formData.append('project_module_id', document.getElementById('addProjectModule').value);
+        formData.append('analyst_id', document.getElementById('addAnalyst').value);
+        formData.append('progress', document.getElementById('addProgress').value);
+        formData.append('related_info', document.getElementById('addRelatedInfo').value);
+        formData.append('tags', document.getElementById('addTags').value);
+
+        fetch('/product_backlog/add', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('添加成功');
+                document.getElementById('addBacklogForm').reset();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addBacklogModal'));
+                modal.hide();
+                location.reload();
+            } else {
+                alert('添加失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('添加失败，请查看控制台了解详情');
+        });
+    }
+
+    // 编辑产品待办事项
+    function editProductBacklog(id) {
+        // 通过AJAX获取待办事项的完整信息
+        fetch(`/product_backlog/get/${id}`)
+        .then(response => {
+            // 检查响应是否为JSON格式
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('服务器返回了非JSON响应');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const backlog = data.backlog;
+
+                // 填充编辑表单
+                document.getElementById('editBacklogId').value = backlog.id;
+                document.getElementById('editTitle').value = backlog.title;
+                document.getElementById('editDescription').value = backlog.description || '';
+                document.getElementById('editRequirementType').value = backlog.requirement_type || '';
+                document.getElementById('editCustomerOwner').value = backlog.customer_owner_id || '';
+                document.getElementById('editPriority').value = backlog.priority || 'P3';
+                document.getElementById('editStatus').value = backlog.status || '待讨论';
+                document.getElementById('editProject').value = backlog.project_id || '';
+                document.getElementById('editAnalyst').value = backlog.analyst_id || '';
+                document.getElementById('editProgress').value = backlog.progress || '未处理';
+                document.getElementById('editRelatedInfo').value = backlog.related_info || '';
+                document.getElementById('editTags').value = backlog.tags || '';
+
+                // 加载项目模块
+                if (backlog.project_id) {
+                    loadProjectModules('edit');
+                    // 设置功能模块值（需要在模块加载完成后设置）
+                    setTimeout(() => {
+                        document.getElementById('editProjectModule').value = backlog.project_module_id || '';
+                    }, 500);
+                }
+
+                // 显示模态框
+                const modal = new bootstrap.Modal(document.getElementById('editBacklogModal'));
+                modal.show();
+            } else {
+                alert('获取需求信息失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('获取需求信息失败: ' + error.message + '，请查看控制台了解详情');
+        });
+    }
+
+    // 提交编辑
+    function submitEditBacklog() {
+        const id = document.getElementById('editBacklogId').value;
+        const formData = new FormData();
+        formData.append('title', document.getElementById('editTitle').value);
+        formData.append('description', document.getElementById('editDescription').value);
+        formData.append('requirement_type', document.getElementById('editRequirementType').value);
+        formData.append('customer_owner_id', document.getElementById('editCustomerOwner').value);
+        formData.append('priority', document.getElementById('editPriority').value);
+        formData.append('status', document.getElementById('editStatus').value);
+        formData.append('project_id', document.getElementById('editProject').value);
+        formData.append('project_module_id', document.getElementById('editProjectModule').value);
+        formData.append('analyst_id', document.getElementById('editAnalyst').value);
+        formData.append('progress', document.getElementById('editProgress').value);
+        formData.append('related_info', document.getElementById('editRelatedInfo').value);
+        formData.append('tags', document.getElementById('editTags').value);
+
+        fetch(`/product_backlog/edit/${id}`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('更新成功');
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editBacklogModal'));
+                modal.hide();
+                location.reload();
+            } else {
+                alert('更新失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('更新失败，请查看控制台了解详情');
+        });
+    }
+
+    // 删除产品待办事项
+    function deleteProductBacklog(id) {
+        if (!confirm('确定要删除这个需求吗？')) {
+            return;
+        }
+
+        fetch(`/product_backlog/delete/${id}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('删除成功');
+                location.reload();
+            } else {
+                alert('删除失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('删除失败，请查看控制台了解详情');
+        });
+    }
+
+    // 导出产品待办事项
+    function exportProductBacklog() {
+        window.location.href = '/product_backlog/export';
+    }
+
+    // 提交导入
+    function submitImport() {
+        const fileInput = document.getElementById('importFile');
+        if (!fileInput.files.length) {
+            alert('请选择要导入的文件');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+
+        fetch('/product_backlog/import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('importModal'));
+                modal.hide();
+                location.reload();
+            } else {
+                alert('导入失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('导入失败，请查看控制台了解详情');
+        });
+    }
+
+    // 筛选产品待办事项
+    function filterProductBacklog() {
+        const projectFilter = document.getElementById('filterProject').value;
+        const priorityFilter = document.getElementById('filterPriority').value;
+        const statusFilter = document.getElementById('filterStatus').value;
+        const keyword = document.getElementById('searchKeyword').value.toLowerCase();
+
+        const rows = document.querySelectorAll('#productBacklogTableBody tr');
+        rows.forEach(row => {
+            const project = row.getAttribute('data-project');
+            const priority = row.getAttribute('data-priority');
+            const status = row.getAttribute('data-status');
+            const title = row.getAttribute('data-title').toLowerCase();
+            const description = row.getAttribute('data-description').toLowerCase();
+
+            const projectMatch = !projectFilter || project == projectFilter;
+            const priorityMatch = !priorityFilter || priority == priorityFilter;
+            const statusMatch = !statusFilter || status == statusFilter;
+            const keywordMatch = !keyword || title.includes(keyword) || description.includes(keyword);
+
+            if (projectMatch && priorityMatch && statusMatch && keywordMatch) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>
+</body>
+</html>

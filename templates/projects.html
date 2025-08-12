@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>项目信息管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .tree-node {
+            list-style-type: none;
+            margin: 5px 0;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        
+        .tree-node.project {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .tree-node.menu {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        
+        .tree-node.page {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+        
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .node-info {
+            flex-grow: 1;
+        }
+        
+        .node-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .node-children {
+            margin-left: 20px;
+            padding-left: 10px;
+            border-left: 1px dashed #ccc;
+        }
+        
+        .node-type-badge {
+            font-size: 0.75em;
+        }
+        
+        .project .node-type-badge {
+            background-color: #6c757d;
+        }
+        
+        .menu .node-type-badge {
+            background-color: #ffc107;
+        }
+        
+        .page .node-type-badge {
+            background-color: #17a2b8;
+        }
+        
+        .node-type-hint {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .project-hint {
+            background-color: #e9ecef;
+            border: 1px solid #adb5bd;
+        }
+        
+        .menu-hint {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .page-hint {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body class="bg-light">
+{% include 'navbar.html' %}
+<div class="container-fluid mt-5">
+    <!-- 添加面包屑导航 -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb breadcrumb-chevron">
+            <li class="breadcrumb-item"><a href="{{ url_for('auth.index') }}">首页</a></li>
+            <li class="breadcrumb-item active" aria-current="page">项目信息管理</li>
+        </ol>
+    </nav>
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">项目信息管理</h3>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addNodeModal" data-parent-id="" data-node-type="project">
+            添加项目
+        </button>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">项目树形结构</h5>
+        </div>
+        <div class="card-body">
+            {% if projects_tree %}
+                <div id="project-tree">
+                    {% for node in projects_tree %}
+                        {% include 'project_tree_node.html' %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">暂无项目信息，请添加项目。</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 添加节点模态框 -->
+<div class="modal fade" id="addNodeModal" tabindex="-1" aria-labelledby="addNodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addNodeModalLabel">添加节点</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- 节点类型提示 -->
+                <div id="node-type-hint" class="node-type-hint project-hint">
+                    当前您正在添加一个 <span id="hint-node-type">项目</span>
+                </div>
+                
+                <form id="add-node-form">
+                    <input type="hidden" id="parent-id" name="parent_id">
+                    <input type="hidden" id="node-type" name="node_type">
+                    
+                    <div class="mb-3">
+                        <label for="node-name" class="form-label">节点名称</label>
+                        <input type="text" class="form-control" id="node-name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3" id="short-name-group" style="display: none;">
+                        <label for="node-short-name" class="form-label">项目简称</label>
+                        <input type="text" class="form-control" id="node-short-name" name="short_name">
+                    </div>
+                    
+                    <!-- 隐藏原来的节点类型显示区域 -->
+                    <div class="mb-3" style="display: none;">
+                        <label class="form-label">节点类型</label>
+                        <div id="node-type-display"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="save-node-btn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑节点模态框 -->
+<div class="modal fade" id="editNodeModal" tabindex="-1" aria-labelledby="editNodeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editNodeModalLabel">编辑节点</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-node-form">
+                    <input type="hidden" id="edit-node-id" name="node_id">
+                    
+                    <div class="mb-3">
+                        <label for="edit-node-name" class="form-label">节点名称</label>
+                        <input type="text" class="form-control" id="edit-node-name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3" id="edit-short-name-group" style="display: none;">
+                        <label for="edit-node-short-name" class="form-label">项目简称</label>
+                        <input type="text" class="form-control" id="edit-node-short-name" name="short_name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">节点类型</label>
+                        <div id="edit-node-type-display"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="update-node-btn">更新</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+<script>
+    // 添加节点模态框事件处理
+    document.getElementById('addNodeModal').addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget;
+        var parentId = button.getAttribute('data-parent-id');
+        var nodeType = button.getAttribute('data-node-type');
+        
+        var modal = this;
+        modal.querySelector('#parent-id').value = parentId;
+        modal.querySelector('#node-type').value = nodeType;
+        
+        // 根据节点类型显示/隐藏项目简称输入框
+        if (nodeType === 'project') {
+            modal.querySelector('#short-name-group').style.display = 'block';
+        } else {
+            modal.querySelector('#short-name-group').style.display = 'none';
+        }
+        
+        // 显示节点类型提示
+        var hintDisplay = modal.querySelector('#hint-node-type');
+        var hintContainer = modal.querySelector('#node-type-hint');
+        
+        if (nodeType === 'project') {
+            hintDisplay.textContent = '项目';
+            hintContainer.className = 'node-type-hint project-hint';
+        } else if (nodeType === 'menu') {
+            hintDisplay.textContent = '菜单';
+            hintContainer.className = 'node-type-hint menu-hint';
+        } else if (nodeType === 'page') {
+            hintDisplay.textContent = '页面';
+            hintContainer.className = 'node-type-hint page-hint';
+        }
+    });
+    
+    // 保存节点按钮事件处理
+    document.getElementById('save-node-btn').addEventListener('click', function () {
+        var form = document.getElementById('add-node-form');
+        var formData = new FormData(form);
+        
+        fetch('{{ url_for("projects.add_project_node") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('添加成功');
+                location.reload();
+            } else {
+                alert('添加失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('添加失败: ' + error);
+        });
+    });
+    
+    // 编辑节点函数
+    function editNode(nodeId, name, shortName, nodeType) {
+        var modal = document.getElementById('editNodeModal');
+        modal.querySelector('#edit-node-id').value = nodeId;
+        modal.querySelector('#edit-node-name').value = name;
+        modal.querySelector('#edit-node-short-name').value = shortName || '';
+        
+        // 根据节点类型显示/隐藏项目简称输入框
+        if (nodeType === 'project') {
+            modal.querySelector('#edit-short-name-group').style.display = 'block';
+        } else {
+            modal.querySelector('#edit-short-name-group').style.display = 'none';
+        }
+        
+        // 显示节点类型
+        var typeDisplay = modal.querySelector('#edit-node-type-display');
+        if (nodeType === 'project') {
+            typeDisplay.textContent = '项目';
+        } else if (nodeType === 'menu') {
+            typeDisplay.textContent = '菜单';
+        } else if (nodeType === 'page') {
+            typeDisplay.textContent = '页面';
+        }
+        
+        var bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+    }
+    
+    // 更新节点按钮事件处理
+    document.getElementById('update-node-btn').addEventListener('click', function () {
+        var nodeId = document.getElementById('edit-node-id').value;
+        var form = document.getElementById('edit-node-form');
+        var formData = new FormData(form);
+        
+        fetch('{{ url_for("projects.edit_project_node", node_id=0) }}'.replace('0', nodeId), {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('更新成功');
+                location.reload();
+            } else {
+                alert('更新失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('更新失败: ' + error);
+        });
+    });
+    
+    // 删除节点函数
+    function deleteNode(nodeId) {
+        if (confirm('确定要删除这个节点吗？')) {
+            fetch('{{ url_for("projects.delete_project_node", node_id=0) }}'.replace('0', nodeId), {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('删除成功');
+                    location.reload();
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败: ' + error);
+            });
+        }
+    }
+    
+    // 添加子节点函数
+    function addChildNode(parentId, nodeType) {
+        var modal = document.getElementById('addNodeModal');
+        modal.querySelector('#parent-id').value = parentId;
+        modal.querySelector('#node-type').value = nodeType;
+        
+        // 根据节点类型显示/隐藏项目简称输入框
+        if (nodeType === 'project') {
+            modal.querySelector('#short-name-group').style.display = 'block';
+        } else {
+            modal.querySelector('#short-name-group').style.display = 'none';
+        }
+        
+        // 显示节点类型提示
+        var hintDisplay = modal.querySelector('#hint-node-type');
+        var hintContainer = modal.querySelector('#node-type-hint');
+        
+        if (nodeType === 'project') {
+            hintDisplay.textContent = '项目';
+            hintContainer.className = 'node-type-hint project-hint';
+        } else if (nodeType === 'menu') {
+            hintDisplay.textContent = '菜单';
+            hintContainer.className = 'node-type-hint menu-hint';
+        } else if (nodeType === 'page') {
+            hintDisplay.textContent = '页面';
+            hintContainer.className = 'node-type-hint page-hint';
+        }
+        
+        // 不再需要显示节点类型，已隐藏相关区域
+        
+        var bootstrapModal = new bootstrap.Modal(modal);
+        bootstrapModal.show();
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<li class="tree-node {{ node.node_type }}" data-node-id="{{ node.id }}">
+    <div class="node-header">
+        <div class="node-info">
+            <strong>{{ node.name }}</strong>
+            {% if node.short_name %}
+                <span class="badge bg-secondary ms-2">{{ node.short_name }}</span>
+            {% endif %}
+            <span class="badge node-type-badge">{{ node.node_type }}</span>
+            <small class="text-muted ms-2">{{ node.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+        </div>
+        <div class="node-actions">
+            {% if node.node_type != 'page' %}
+                <button class="btn btn-sm btn-outline-primary" 
+                        onclick="addChildNode({{ node.id }}, 'menu')">添加菜单</button>
+                <button class="btn btn-sm btn-outline-info" 
+                        onclick="addChildNode({{ node.id }}, 'page')">添加页面</button>
+            {% endif %}
+            <button class="btn btn-sm btn-outline-secondary" 
+                    onclick="editNode({{ node.id }}, '{{ node.name }}', '{{ node.short_name or '' }}', '{{ node.node_type }}')">编辑</button>
+            <button class="btn btn-sm btn-outline-danger" 
+                    onclick="deleteNode({{ node.id }})">删除</button>
+        </div>
+    </div>
+    
+    {% if node.children %}
+        <ul class="node-children">
+            {% for child in node.children %}
+                {% with node=child %}
+                    {% include 'project_tree_node.html' %}
+                {% endwith %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li>

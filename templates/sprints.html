@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>迭代管理 - 敏捷开发工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>迭代管理</h3>
+            {% if check_system_feature_access(session, 'sprints.sprints') %}
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSprintModal">添加迭代</button>
+            {% endif %}
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="sprintTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#active" type="button" role="tab">进行中</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="upcoming-tab" data-bs-toggle="tab" data-bs-target="#upcoming" type="button" role="tab">未开始</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed" type="button" role="tab">已完成</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="sprintTabsContent">
+                    <div class="tab-pane fade show active" id="active" role="tabpanel">
+                        {% if active_sprints %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>迭代名称</th>
+                                            <th>周期</th>
+                                            <th>所属项目</th>
+                                            <th>团队</th>
+                                            <th>产品负责人</th>
+                                            <th>Scrum Master</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sprint in active_sprints %}
+                                        <tr>
+                                            <td>
+                                                <a href="{{ url_for('sprints.sprint_detail', sprint_id=sprint.id) }}">{{ sprint.name }}</a>
+                                            </td>
+                                            <td>{{ sprint.start_date }} 至 {{ sprint.end_date }}</td>
+                                            <td>{{ sprint.project.name if sprint.project else '未指定' }}</td>
+                                            <td>{{ sprint.team or '未指定' }}</td>
+                                            <td>{{ sprint.product_owner.name if sprint.product_owner else '未指定' }}</td>
+                                            <td>{{ sprint.scrum_master.name if sprint.scrum_master else '未指定' }}</td>
+                                            <td>
+                                                {% if check_system_feature_access(session, 'sprints.sprints') %}
+                                                <a href="#" class="btn btn-sm btn-outline-secondary complete-sprint-btn" 
+                                                   data-id="{{ sprint.id }}" 
+                                                   data-name="{{ sprint.name }}">完成</a>
+                                                <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSprintModal" 
+                                                   data-id="{{ sprint.id }}" 
+                                                   data-name="{{ sprint.name }}"
+                                                   data-start-date="{{ sprint.start_date }}"
+                                                   data-end-date="{{ sprint.end_date }}"
+                                                   data-project-id="{{ sprint.project_id or '' }}"
+                                                   data-team="{{ sprint.team or '' }}"
+                                                   data-po-id="{{ sprint.product_owner_id or '' }}"
+                                                   data-sm-id="{{ sprint.scrum_master_id or '' }}">编辑</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">暂无进行中的迭代</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="upcoming" role="tabpanel">
+                        {% if upcoming_sprints %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>迭代名称</th>
+                                            <th>周期</th>
+                                            <th>所属项目</th>
+                                            <th>团队</th>
+                                            <th>产品负责人</th>
+                                            <th>Scrum Master</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sprint in upcoming_sprints %}
+                                        <tr>
+                                            <td>
+                                                <a href="{{ url_for('sprints.sprint_detail', sprint_id=sprint.id) }}">{{ sprint.name }}</a>
+                                            </td>
+                                            <td>{{ sprint.start_date }} 至 {{ sprint.end_date }}</td>
+                                            <td>{{ sprint.project.name if sprint.project else '未指定' }}</td>
+                                            <td>{{ sprint.team or '未指定' }}</td>
+                                            <td>{{ sprint.product_owner.name if sprint.product_owner else '未指定' }}</td>
+                                            <td>{{ sprint.scrum_master.name if sprint.scrum_master else '未指定' }}</td>
+                                            <td>
+                                                {% if check_system_feature_access(session, 'sprints.sprints') %}
+                                                <a href="#" class="btn btn-sm btn-outline-success start-sprint-btn" 
+                                                   data-id="{{ sprint.id }}" 
+                                                   data-name="{{ sprint.name }}">开始</a>
+                                                <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSprintModal" 
+                                                   data-id="{{ sprint.id }}" 
+                                                   data-name="{{ sprint.name }}"
+                                                   data-start-date="{{ sprint.start_date }}"
+                                                   data-end-date="{{ sprint.end_date }}"
+                                                   data-project-id="{{ sprint.project_id or '' }}"
+                                                   data-team="{{ sprint.team or '' }}"
+                                                   data-po-id="{{ sprint.product_owner_id or '' }}"
+                                                   data-sm-id="{{ sprint.scrum_master_id or '' }}">编辑</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">暂无未开始的迭代</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="completed" role="tabpanel">
+                        {% if completed_sprints %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>迭代名称</th>
+                                            <th>周期</th>
+                                            <th>所属项目</th>
+                                            <th>团队</th>
+                                            <th>产品负责人</th>
+                                            <th>Scrum Master</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for sprint in completed_sprints %}
+                                        <tr>
+                                            <td>
+                                                <a href="{{ url_for('sprints.sprint_detail', sprint_id=sprint.id) }}">{{ sprint.name }}</a>
+                                            </td>
+                                            <td>{{ sprint.start_date }} 至 {{ sprint.end_date }}</td>
+                                            <td>{{ sprint.project.name if sprint.project else '未指定' }}</td>
+                                            <td>{{ sprint.team or '未指定' }}</td>
+                                            <td>{{ sprint.product_owner.name if sprint.product_owner else '未指定' }}</td>
+                                            <td>{{ sprint.scrum_master.name if sprint.scrum_master else '未指定' }}</td>
+                                            <td>
+                                                {% if check_system_feature_access(session, 'sprints.sprints') %}
+                                                <a href="#" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSprintModal" 
+                                                   data-id="{{ sprint.id }}" 
+                                                   data-name="{{ sprint.name }}"
+                                                   data-start-date="{{ sprint.start_date }}"
+                                                   data-end-date="{{ sprint.end_date }}"
+                                                   data-project-id="{{ sprint.project_id or '' }}"
+                                                   data-team="{{ sprint.team or '' }}"
+                                                   data-po-id="{{ sprint.product_owner_id or '' }}"
+                                                   data-sm-id="{{ sprint.scrum_master_id or '' }}">编辑</a>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">暂无已完成的迭代</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加迭代模态框 -->
+    <div class="modal fade" id="addSprintModal" tabindex="-1" aria-labelledby="addSprintModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('sprints.add_sprint') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addSprintModalLabel">添加迭代</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">迭代名称</label>
+                            <input type="text" class="form-control" id="name" name="name" placeholder="例如：Sprint 1 - 用户认证功能" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="project_id" class="form-label">所属项目</label>
+                            <select class="form-select" id="project_id" name="project_id">
+                                <option value="">请选择项目</option>
+                                {% for project in projects %}
+                                    <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="start_date" class="form-label">开始日期</label>
+                                <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="end_date" class="form-label">结束日期</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="team" class="form-label">团队</label>
+                            <input type="text" class="form-control" id="team" name="team">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="product_owner_id" class="form-label">产品负责人</label>
+                                <select class="form-select" id="product_owner_id" name="product_owner_id">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="scrum_master_id" class="form-label">Scrum Master</label>
+                                <select class="form-select" id="scrum_master_id" name="scrum_master_id">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 编辑迭代模态框 -->
+    <div class="modal fade" id="editSprintModal" tabindex="-1" aria-labelledby="editSprintModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('sprints.edit_sprint') }}">
+                    <input type="hidden" id="edit_sprint_id" name="sprint_id">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editSprintModalLabel">编辑迭代</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit_name" class="form-label">迭代名称</label>
+                            <input type="text" class="form-control" id="edit_name" name="name" placeholder="例如：Sprint 1 - 用户认证功能" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_project_id" class="form-label">所属项目</label>
+                            <select class="form-select" id="edit_project_id" name="project_id">
+                                <option value="">请选择项目</option>
+                                {% for project in projects %}
+                                    <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_start_date" class="form-label">开始日期</label>
+                                <input type="date" class="form-control" id="edit_start_date" name="start_date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_end_date" class="form-label">结束日期</label>
+                                <input type="date" class="form-control" id="edit_end_date" name="end_date" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_team" class="form-label">团队</label>
+                            <input type="text" class="form-control" id="edit_team" name="team">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_product_owner_id" class="form-label">产品负责人</label>
+                                <select class="form-select" id="edit_product_owner_id" name="product_owner_id">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit_scrum_master_id" class="form-label">Scrum Master</label>
+                                <select class="form-select" id="edit_scrum_master_id" name="scrum_master_id">
+                                    <option value="">请选择</option>
+                                    {% for user in users %}
+                                        <option value="{{ user.id }}">{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 编辑迭代模态框数据填充
+        var editSprintModal = document.getElementById('editSprintModal');
+        editSprintModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var sprintId = button.getAttribute('data-id');
+            var sprintName = button.getAttribute('data-name');
+            var startDate = button.getAttribute('data-start-date');
+            var endDate = button.getAttribute('data-end-date');
+            var team = button.getAttribute('data-team');
+            var projectId = button.getAttribute('data-project-id');
+            var poId = button.getAttribute('data-po-id');
+            var smId = button.getAttribute('data-sm-id');
+
+            console.log('编辑迭代数据:', {
+                sprintId: sprintId,
+                sprintName: sprintName,
+                startDate: startDate,
+                endDate: endDate,
+                projectId: projectId,
+                team: team,
+                poId: poId,
+                smId: smId
+            });
+            
+            var modal = this;
+            modal.querySelector('#edit_sprint_id').value = sprintId;
+            modal.querySelector('#edit_name').value = sprintName;
+            modal.querySelector('#edit_start_date').value = startDate;
+            modal.querySelector('#edit_end_date').value = endDate;
+            modal.querySelector('#edit_project_id').value = projectId;
+            modal.querySelector('#edit_team').value = team;
+            modal.querySelector('#edit_product_owner_id').value = poId;
+            modal.querySelector('#edit_scrum_master_id').value = smId;
+        });
+        
+        // 开始迭代功能
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('start-sprint-btn')) {
+                e.preventDefault();
+                var sprintId = e.target.getAttribute('data-id');
+                var sprintName = e.target.getAttribute('data-name');
+                
+                if (confirm('确定要开始迭代 "' + sprintName + '" 吗？')) {
+                    fetch('/sprint/' + sprintId + '/start', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'sprint_id=' + sprintId
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('迭代 "' + sprintName + '" 已开始！');
+                            location.reload();
+                        } else {
+                            alert('操作失败: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('操作失败: ' + error);
+                    });
+                }
+            }
+        });
+        
+        // 完成迭代功能
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('complete-sprint-btn')) {
+                e.preventDefault();
+                var sprintId = e.target.getAttribute('data-id');
+                var sprintName = e.target.getAttribute('data-name');
+                
+                if (confirm('确定要完成迭代 "' + sprintName + '" 吗？')) {
+                    fetch('/sprint/' + sprintId + '/complete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'sprint_id=' + sprintId
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('迭代 "' + sprintName + '" 已完成！');
+                            location.reload();
+                        } else {
+                            alert('操作失败: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        alert('操作失败: ' + error);
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

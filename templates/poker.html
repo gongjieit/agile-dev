@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>估算扑克</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-5">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb breadcrumb-chevron">
+                <li class="breadcrumb-item"><a href="{{ url_for('auth.index') }}">首页</a></li>
+                <li class="breadcrumb-item active" aria-current="page">估算房间</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">
+                估算房间 -
+                {% if user_story %}
+                    {{ user_story.title }}
+                {% endif %}
+            </h3>
+            <div>
+                {% if session.is_admin %}
+                    {% if user_story %}
+                    <a href="{{ url_for('estimation.estimate', user_story_id=user_story.id) }}" class="btn btn-primary me-2">进入估算</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">团队成员</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if estimates %}
+                        <div class="row g-3">
+                            {% for estimate in estimates %}
+                            <div class="col-md-6 col-lg-4">
+                                <div class="card h-100">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">{{ estimate.user.name }}</h6>
+                                        {% if estimate.card_value %}
+                                            {% if estimate.round.end_time %}
+                                                <!-- 已揭示 -->
+                                                <div class="p-3 bg-success bg-opacity-10 rounded">
+                                                    <span class="display-6 text-success">{{ estimate.card_value }}</span>
+                                                </div>
+                                            {% else %}
+                                                <!-- 已选择但未揭示 -->
+                                                <div class="p-3 bg-warning bg-opacity-10 rounded">
+                                                    <span class="display-6 text-warning">✓</span>
+                                                </div>
+                                            {% endif %}
+                                        {% else %}
+                                            <!-- 未选择 -->
+                                            <div class="p-3 bg-secondary bg-opacity-10 rounded">
+                                                <span class="display-6 text-secondary">-</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center mb-0">暂无团队成员参与估算</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">操作</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if session.is_admin %}
+                        <form method="post" action="{{ url_for('estimation.reveal', feature_id=feature.id) }}" class="d-grid gap-2 mb-3">
+                            <button type="submit" class="btn btn-success btn-lg" {% if not can_reveal %}disabled{% endif %}>
+                                {% if can_reveal %}
+                                    揭示结果
+                                {% else %}
+                                    等待更多成员选择
+                                {% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                        
+                        <form method="post" class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title mb-3">选择你的卡片</h6>
+                                <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+                                    {% for card in cards %}
+                                    <button type="submit" name="card_value" value="{{ card }}" class="btn btn-outline-primary d-flex align-items-center justify-content-center" style="width: 50px; height: 70px; white-space: nowrap;">
+                                        {{ card }}
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">提交选择</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>敏捷估算页面</title>
+    <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">敏捷估算扑克</h3>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">估算列表</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if user_story_list %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>序号</th>
+                                <th>用户故事标题</th>
+                                <th>用户故事描述</th>
+                                <th>进度</th>
+                                <th>已出牌人员</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user_story in user_story_list %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ user_story.title }}</td>
+                                <td>
+                                    {% if user_story.description %}
+                                        {{ user_story.description }}
+                                    {% else %}
+                                        <span class="text-muted">暂无描述</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if progress_info[user_story.id].round_id %}
+                                        <span class="badge bg-success">进行中</span>
+                                        <div class="mt-1">
+                                            <small class="text-muted">
+                                                {{ progress_info[user_story.id].finished_count }}/{{ progress_info[user_story.id].user_count }} 人完成
+                                            </small>
+                                        </div>
+                                    {% else %}
+                                        <span class="badge bg-secondary">未开始</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if progress_info[user_story.id].finished_users %}
+                                        {% for user in progress_info[user_story.id].finished_users %}
+                                            <span class="badge bg-primary me-1">{{ user.name }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">暂无</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('estimation.start_estimate', user_story_id=user_story.id) }}" class="btn btn-sm btn-primary">开始估算</a>
+                                    {% if progress_info[user_story.id].round_id and is_admin %}
+                                        <a href="{{ url_for('estimation.reveal', round_id=progress_info[user_story.id].round_id) }}" class="btn btn-sm btn-warning">亮牌</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <!-- 添加分页控件 -->
+                {% if pagination.pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="分页导航">
+                        <ul class="pagination justify-content-center mb-0">
+                            <!-- 上一页 -->
+                            {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('estimation.estimate', page=pagination.prev_num) }}">上一页</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">上一页</span>
+                            </li>
+                            {% endif %}
+
+                            <!-- 页码 -->
+                            {% for page_num in pagination.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != pagination.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('estimation.estimate', page=page_num) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">…</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            <!-- 下一页 -->
+                            {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('estimation.estimate', page=pagination.next_num) }}">下一页</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">下一页</span>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <p class="mb-0">暂无用户故事，请先添加用户故事。</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>等待页面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <meta http-equiv="refresh" content="3">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-5">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb breadcrumb-chevron">
+                <li class="breadcrumb-item"><a href="{{ url_for('auth.index') }}">首页</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('estimation.poker', user_story_id=user_story.id) }}">估算房间</a></li>
+                <li class="breadcrumb-item active" aria-current="page">等待揭示</li>
+            </ol>
+        </nav>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="mb-0 text-center">等待管理员揭示结果</h3>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="mb-4">
+                            <div class="display-1 text-warning">⏳</div>
+                        </div>
+                        <p class="lead">管理员正在收集所有团队成员的估算卡片...</p>
+                        <p>请耐心等待管理员揭示估算结果。</p>
+                        <div class="d-grid gap-2 col-lg-6 mx-auto">
+                            <a href="{{ url_for('estimation.poker', user_story_id=user_story.id) }}" class="btn btn-primary">返回房间</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
