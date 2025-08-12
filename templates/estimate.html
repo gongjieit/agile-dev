@@ -6,6 +6,39 @@
     <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">-->
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* 设置表格列的宽度 */
+        .table td:nth-child(1), .table th:nth-child(4) {
+            width: 3%; /* 序号列宽度 */
+            white-space: nowrap; /* 防止内容折行 */
+        }
+
+        .table td:nth-child(2), .table th:nth-child(4) {
+            width: 10%; /* 用户故事标题列宽度 */
+            white-space: nowrap; /* 防止内容折行 */
+        }
+
+        .table td:nth-child(4), .table th:nth-child(4) {
+            width: 6%; /* 故事点列宽度 */
+            white-space: nowrap; /* 防止内容折行 */
+        }
+
+        .table td:nth-child(5), .table th:nth-child(5) {
+            width: 6%; /* 进度列宽度 */
+            white-space: nowrap; /* 防止内容折行 */
+        }
+
+        .table td:nth-child(6), .table th:nth-child(6) {
+            width: 15%; /* 已出牌人员列宽度 */
+            white-space: nowrap; /* 防止内容折行 */
+        }
+
+        .table td:nth-child(7), .table th:nth-child(7) {
+            width: 8%; /* 操作列宽度 */
+            white-space: nowrap; /* 防止内容折行 */
+        }
+
+    </style>
 </head>
 <body class="bg-light">
     {% include 'navbar.html' %}
@@ -28,6 +61,7 @@
                                 <th>序号</th>
                                 <th>用户故事标题</th>
                                 <th>用户故事描述</th>
+                                <th>故事点</th>
                                 <th>进度</th>
                                 <th>已出牌人员</th>
                                 <th>操作</th>
@@ -43,6 +77,13 @@
                                         {{ user_story.description }}
                                     {% else %}
                                         <span class="text-muted">暂无描述</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if story_points_info[user_story.id] %}
+                                        <span class="badge bg-info">{{ story_points_info[user_story.id] }}</span>
+                                    {% else %}
+                                        <span class="text-muted">未分配</span>
                                     {% endif %}
                                 </td>
                                 <td>

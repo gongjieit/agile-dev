@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from sqlalchemy import or_
-from models import db, TestCase, User, ProjectInfo, Sprint, UserStory, SprintBacklog
+from models import db, TestCase, User, ProjectInfo, Sprint, UserStory, SprintBacklog, ProductBacklog
 from utils import check_system_feature_access
 from decorators import check_access_blueprint
 from datetime import datetime
@@ -394,7 +394,9 @@ def get_user_stories():
     page_ids = [page.id for page in pages]
 
     # 获取页面下的所有用户故事
-    user_stories = UserStory.query.filter(UserStory.project_page_id.in_(page_ids)).all()
+    user_stories = UserStory.query.join(ProductBacklog).filter(
+        ProductBacklog.project_module_id.in_(page_ids)
+    ).all()
 
     stories_data = []
     for story in user_stories:

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from datetime import datetime, UTC
-from models import db, User, GameRound, Estimate, UserStory
+from models import db, User, GameRound, Estimate, UserStory, SprintBacklog, Sprint
 from utils import check_user_role
 
 estimation_bp = Blueprint('estimation', __name__)
@@ -89,8 +89,50 @@ def reveal():
     average = sum(numeric_estimates) / len(numeric_estimates) if numeric_estimates else 0
     
     # 计算共识 - 所有人选择相同值
-    consensus = len(set(e.card_value for e in estimates)) == 1 if estimates else False
-    
+    # consensus = len(set(e.card_value for e in estimates)) == 1 if estimates else False
+
+    # 计算共识 - 使用多数投票方法（动态阈值）
+    # 如果有超过一定比例（如70%）的成员选择了相同的值，则认为达成共识
+    # 对于小团队，使用较低的阈值
+    def calculate_consensus_by_majority(estimates):
+        if not estimates:
+            return False, None
+
+        # 统计每个值的选择次数
+        value_counts = {}
+        total_votes = 0
+        for e in estimates:
+            # 只考虑有效数值估算
+            if e.card_value not in ['?', '∞', 'coffee'] and e.card_value is not None:
+                value_counts[e.card_value] = value_counts.get(e.card_value, 0) + 1
+                total_votes += 1
+
+        if total_votes == 0:
+            return False, None
+
+        # 找出得票最多的值
+        majority_value = max(value_counts, key=value_counts.get)
+        majority_votes = value_counts[majority_value]
+
+        # 动态阈值：小团队使用较低阈值，大团队使用较高阈值
+        # 2-3人团队：50%阈值
+        # 4-5人团队：60%阈值
+        # 6人及以上团队：70%阈值
+        if total_votes <= 3:
+            threshold = 0.5
+        elif total_votes <= 5:
+            threshold = 0.6
+        else:
+            threshold = 0.7
+
+        # 检查是否超过阈值
+        consensus_reached = (majority_votes / total_votes) >= threshold
+
+        return consensus_reached, majority_value if consensus_reached else majority_value, threshold, total_votes
+
+    # 使用多数投票方法计算共识
+    consensus, consensus_value, threshold, total_votes = calculate_consensus_by_majority(estimates)
+
     # 计算数值分布
     value_counts = {}
     for e in estimates:
@@ -106,7 +148,10 @@ def reveal():
                          estimates=estimates,
                          average=average,
                          consensus=consensus,
+                         consensus_value=consensus_value,
                          value_counts=value_counts,
+                         threshold=threshold,
+                         total_votes=total_votes
                          )
 
 @estimation_bp.route('/new_round')
@@ -120,6 +165,59 @@ def new_round():
     if current_round and current_round.end_time is None:
         current_round.end_time = datetime.now(UTC)
         db.session.commit()
+    return redirect(url_for('estimation.estimate'))
+
+
+@estimation_bp.route('/save_story_points', methods=['POST'])
+def save_story_points():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    round_id = request.form.get('round_id', type=int)
+    story_points = request.form.get('story_points', type=float)
+
+    if not round_id or story_points is None:
+        flash('参数错误', 'error')
+        return redirect(url_for('estimation.reveal', round_id=round_id))
+
+    current_round = db.session.get(GameRound, round_id)
+    # 当回合不存在时才提示无效
+    if not current_round:
+        flash('无效的估算回合', 'error')
+        return redirect(url_for('estimation.reveal', round_id=round_id))
+
+    # 更新冲刺待办列表中的故事点
+    user_story = current_round.user_story
+    if user_story:
+        # 查找与该用户故事关联的冲刺待办事项
+        # 优先更新当前进行中的冲刺中的待办事项
+        sprint_backlog = SprintBacklog.query.join(Sprint).filter(
+            SprintBacklog.user_story_id == user_story.id,
+            Sprint.status == '进行中'
+        ).first()
+
+        # 如果没有进行中的冲刺，则更新最近的冲刺待办事项
+        if not sprint_backlog:
+            sprint_backlog = SprintBacklog.query.filter_by(user_story_id=user_story.id).first()
+
+        if sprint_backlog:
+            sprint_backlog.story_points = story_points
+            # 只有在回合尚未结束时才设置结束时间
+            if current_round.end_time is None:
+                current_round.end_time = datetime.now(UTC)  # 结束当前回合
+            db.session.commit()
+            flash(f'故事点已保存为 {story_points}', 'success')
+        else:
+            # 如果没有关联的冲刺待办事项，则更新用户故事的effort字段作为备选方案
+            user_story.effort = story_points
+            # 只有在回合尚未结束时才设置结束时间
+            if current_round.end_time is None:
+                current_round.end_time = datetime.now(UTC)  # 结束当前回合
+            db.session.commit()
+            flash(f'故事点已保存为 {story_points}', 'success')
+    else:
+        flash('未找到关联的用户故事', 'error')
+
     return redirect(url_for('estimation.estimate'))
 
 
@@ -138,6 +236,20 @@ def estimate():
 
     user_story_list = user_story_pagination.items
     user_count = User.query.count()
+
+    # 创建一个字典来存储每个用户故事的故事点
+    story_points_info = {}
+    user_story_ids = [user_story.id for user_story in user_story_list]
+
+    # 获取这些用户故事关联的冲刺待办事项
+    sprint_backlogs = SprintBacklog.query.filter(
+        SprintBacklog.user_story_id.in_(user_story_ids)
+    ).all()
+
+    # 将每个用户故事ID映射到其故事点
+    for backlog in sprint_backlogs:
+        story_points_info[backlog.user_story_id] = backlog.story_points
+
     progress_info = {}
     for user_story in user_story_list:
         current_round = GameRound.query.filter_by(user_story_id=user_story.id, end_time=None).first()
@@ -161,5 +273,6 @@ def estimate():
     return render_template('estimate.html',
                            user_story_list=user_story_list,
                            progress_info=progress_info,
+                           story_points_info=story_points_info,
                            is_admin=is_admin,
                            pagination=user_story_pagination)
