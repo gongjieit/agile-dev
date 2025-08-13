@@ -275,12 +275,12 @@
                                     <div class="col-md-12">
                                         <h6 class="border-bottom pb-2 mb-3">项目信息</h6>
                                         <div class="row mb-2">
-                                            <div class="col-6 fw-bold">项目名称:</div>
-                                            <div class="col-6" id="project-name"></div>
+                                            <div class="col-4 fw-bold">项目名称:</div>
+                                            <div class="col-8" id="project-name"></div>
                                         </div>
                                         <div class="row mb-2">
-                                            <div class="col-6 fw-bold">项目简称:</div>
-                                            <div class="col-6" id="project-description"></div>
+                                            <div class="col-4 fw-bold">项目简称:</div>
+                                            <div class="col-8" id="project-short-name"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -474,10 +474,10 @@
             // 更新项目信息
             if (projectInfo) {
                 document.getElementById('project-name').textContent = projectInfo.name || '未指定';
-                document.getElementById('project-description').textContent = projectInfo.description || '无描述';
+                document.getElementById('project-short-name').textContent = projectInfo.short_name || '无描述';
             } else {
                 document.getElementById('project-name').textContent = '未指定';
-                document.getElementById('project-description').textContent = '无描述';
+                document.getElementById('project-short-name').textContent = '无描述';
             }
 
             // 更新迭代信息
