@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 from config import MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB, MYSQL_PORT
 from utils import check_user_role, check_system_feature_access
@@ -20,7 +22,7 @@ from routes.kanban import kanban_bp
 from routes.product_backlog import product_backlog_bp
 from routes.test_cases import test_cases_bp
 from routes.prototype import prototype_bp
-
+from routes.defects import defects_bp
 
 def create_app():
     app = Flask(__name__)
@@ -29,7 +31,8 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # 配置上传文件夹
-    app.config['UPLOAD_FOLDER'] = 'uploads'
+    app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
     db.init_app(app)
 
@@ -70,6 +73,7 @@ def create_app():
     app.register_blueprint(product_backlog_bp)
     app.register_blueprint(test_cases_bp)
     app.register_blueprint(prototype_bp)
+    app.register_blueprint(defects_bp)
 
     return app
 

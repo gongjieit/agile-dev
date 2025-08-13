@@ -45,6 +45,11 @@
                     <a class="nav-link" href="{{ url_for('test_cases.test_cases') }}">测试用例</a>
                 </li>
                 {% endif %}
+                {% if session.get('features', {}) and session.features.get('defects.defects') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('defects.defects') }}">缺陷管理</a>
+                </li>
+                {% endif %}
                 {% if session.get('features', {}) and session.features.get('kanban.kanban') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('kanban.kanban') }}">敏捷看板</a>

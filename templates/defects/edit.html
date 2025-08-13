@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>编辑缺陷</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+    <style>
+        .ck-editor__editable {
+            min-height: 300px !important;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2>编辑缺陷</h2>
+
+                <form method="POST" enctype="multipart/form-data" id="defectForm">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>基本信息</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="defect_id" class="form-label">缺陷编号</label>
+                                        <input type="text" class="form-control" id="defect_id" name="defect_id" value="{{ defect.defect_id or '' }}" readonly>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label">缺陷标题 *</label>
+                                        <input type="text" class="form-control" id="title" name="title" value="{{ defect.title or '' }}" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="project_id" class="form-label">所属项目 *</label>
+                                        <select class="form-select" id="project_id" name="project_id" required>
+                                            <option value="">请选择项目</option>
+                                            {% for project in projects %}
+                                            <option value="{{ project.id }}" {% if defect.project_id == project.id %}selected{% endif %}>{{ project.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="sprint_id" class="form-label">所属迭代</label>
+                                        <select class="form-select" id="sprint_id" name="sprint_id">
+                                            <option value="">请选择迭代</option>
+                                            {% for sprint in sprints %}
+                                            <option value="{{ sprint.id }}" {% if defect.sprint_id == sprint.id %}selected{% endif %}>{{ sprint.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="description" class="form-label">缺陷描述 *</label>
+                                        <textarea class="form-control" id="description" name="description" rows="10">{{ defect.description or '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>详细信息</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="priority" class="form-label">优先级</label>
+                                                <select class="form-select" id="priority" name="priority">
+                                                    <option value="P0" {% if defect.priority == 'P0' %}selected{% endif %}>P0</option>
+                                                    <option value="P1" {% if defect.priority == 'P1' %}selected{% endif %}>P1</option>
+                                                    <option value="P2" {% if defect.priority == 'P2' %}selected{% endif %}>P2</option>
+                                                    <option value="P3" {% if defect.priority == 'P3' or not defect.priority %}selected{% endif %}>P3</option>
+                                                    <option value="P4" {% if defect.priority == 'P4' %}selected{% endif %}>P4</option>
+                                                    <option value="P5" {% if defect.priority == 'P5' %}selected{% endif %}>P5</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="severity" class="form-label">严重程度</label>
+                                                <select class="form-select" id="severity" name="severity">
+                                                    <option value="致命" {% if defect.severity == '致命' %}selected{% endif %}>致命</option>
+                                                    <option value="严重" {% if defect.severity == '严重' %}selected{% endif %}>严重</option>
+                                                    <option value="一般" {% if defect.severity == '一般' or not defect.severity %}selected{% endif %}>一般</option>
+                                                    <option value="提示" {% if defect.severity == '提示' %}selected{% endif %}>提示</option>
+                                                    <option value="建议" {% if defect.severity == '建议' %}selected{% endif %}>建议</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="defect_type" class="form-label">缺陷类型</label>
+                                                <select class="form-select" id="defect_type" name="defect_type">
+                                                    <option value="功能问题" {% if defect.defect_type == '功能问题' or not defect.defect_type %}selected{% endif %}>功能问题</option>
+                                                    <option value="界面优化" {% if defect.defect_type == '界面优化' %}selected{% endif %}>界面优化</option>
+                                                    <option value="设计缺陷" {% if defect.defect_type == '设计缺陷' %}selected{% endif %}>设计缺陷</option>
+                                                    <option value="性能问题" {% if defect.defect_type == '性能问题' %}selected{% endif %}>性能问题</option>
+                                                    <option value="安全问题" {% if defect.defect_type == '安全问题' %}selected{% endif %}>安全问题</option>
+                                                    <option value="兼容问题" {% if defect.defect_type == '兼容问题' %}selected{% endif %}>兼容问题</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="assignee_id" class="form-label">负责人</label>
+                                                <select class="form-select" id="assignee_id" name="assignee_id">
+                                                    <option value="">未分配</option>
+                                                    {% for user in users %}
+                                                    <option value="{{ user.id }}" {% if defect.assignee_id == user.id %}selected{% endif %}>{{ user.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="resolver_id" class="form-label">处理人</label>
+                                                <select class="form-select" id="resolver_id" name="resolver_id">
+                                                    <option value="">未分配</option>
+                                                    {% for user in users %}
+                                                    <option value="{{ user.id }}" {% if defect.resolver_id == user.id %}selected{% endif %}>{{ user.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="status" class="form-label">缺陷状态</label>
+                                                <select class="form-select" id="status" name="status">
+                                                    <option value="待处理" {% if defect.status == '待处理' or not defect.status %}selected{% endif %}>待处理</option>
+                                                    <option value="问题修复中" {% if defect.status == '问题修复中' %}selected{% endif %}>问题修复中</option>
+                                                    <option value="已修复" {% if defect.status == '已修复' %}selected{% endif %}>已修复</option>
+                                                    <option value="已验证" {% if defect.status == '已验证' %}selected{% endif %}>已验证</option>
+                                                    <option value="重新打开" {% if defect.status == '重新打开' %}selected{% endif %}>重新打开</option>
+                                                    <option value="关闭" {% if defect.status == '关闭' %}selected{% endif %}>关闭</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="resolution" class="form-label">处理结果</label>
+                                                <select class="form-select" id="resolution" name="resolution">
+                                                    <option value="未设置" {% if defect.resolution == '未设置' or not defect.resolution %}selected{% endif %}>未设置</option>
+                                                    <option value="已解决" {% if defect.resolution == '已解决' %}selected{% endif %}>已解决</option>
+                                                    <option value="无法重现" {% if defect.resolution == '无法重现' %}selected{% endif %}>无法重现</option>
+                                                    <option value="延期处理" {% if defect.resolution == '延期处理' %}selected{% endif %}>延期处理</option>
+                                                    <option value="不修复" {% if defect.resolution == '不修复' %}selected{% endif %}>不修复</option>
+                                                    <option value="重复问题" {% if defect.resolution == '重复问题' %}selected{% endif %}>重复问题</option>
+                                                    <option value="非问题" {% if defect.resolution == '非问题' %}selected{% endif %}>非问题</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="is_online" class="form-label">是否线上缺陷</label>
+                                                <select class="form-select" id="is_online" name="is_online">
+                                                    <option value="False" {% if not defect.is_online %}selected{% endif %}>否</option>
+                                                    <option value="True" {% if defect.is_online %}selected{% endif %}>是</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="dev_team" class="form-label">开发团队</label>
+                                                <input type="text" class="form-control" id="dev_team" name="dev_team" value="{{ defect.dev_team or '' }}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                        <a href="{{ url_for('defects.defects') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+
+        ClassicEditor
+            .create(document.querySelector('#description'), {
+                toolbar: [
+                    'heading', '|',
+                    'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', '|',
+                    'outdent', 'indent', '|',
+                    'imageUpload', 'insertTable', 'mediaEmbed', '|',
+                    'undo', 'redo'
+                ],
+                language: 'zh-cn',
+                ckfinder: {
+                    uploadUrl: '{{ url_for("defects.upload_image") }}'
+                },
+                image: {
+                    toolbar: [
+                        'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
+                    ]
+                }
+            })
+            .then(newEditor => {
+                editor = newEditor;
+            })
+            .catch(error => {
+                console.error(error);
+            });
+
+        // 表单提交前验证
+        document.getElementById('defectForm').addEventListener('submit', function(e) {
+            // 验证缺陷描述是否为空
+            const descriptionData = editor.getData().trim();
+            if (!descriptionData) {
+                e.preventDefault();
+                alert('请输入缺陷描述');
+                return false;
+            }
+
+            // 将编辑器内容同步到textarea
+            document.getElementById('description').value = descriptionData;
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

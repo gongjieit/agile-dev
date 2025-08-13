@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>缺陷管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>缺陷管理</h3>
+            <div>
+                <a href="{{ url_for('defects.create_defect') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 新增缺陷
+                </a>
+                <a href="{{ url_for('defects.import_defects') }}" class="btn btn-secondary ms-2">
+                    <i class="fas fa-upload"></i> 导入缺陷
+                </a>
+                <a href="{{ url_for('defects.export_defects') }}" class="btn btn-success ms-2">
+                    <i class="fas fa-download"></i> 导出缺陷
+                </a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 筛选表单 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">筛选条件</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="project_id" class="form-label">所属项目</label>
+                        <select class="form-select" id="project_id" name="project_id">
+                            <option value="">全部项目</option>
+                            {% for project in projects %}
+                                <option value="{{ project.id }}" {% if filters.project_id == project.id %}selected{% endif %}>
+                                    {{ project.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="sprint_id" class="form-label">所属迭代</label>
+                        <select class="form-select" id="sprint_id" name="sprint_id">
+                            <option value="">全部迭代</option>
+                            {% for sprint in sprints %}
+                                <option value="{{ sprint.id }}" {% if filters.sprint_id == sprint.id %}selected{% endif %}>
+                                    {{ sprint.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="status" class="form-label">缺陷状态</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="">全部状态</option>
+                            <option value="待处理" {% if filters.status == '待处理' %}selected{% endif %}>待处理</option>
+                            <option value="问题修复中" {% if filters.status == '问题修复中' %}selected{% endif %}>问题修复中</option>
+                            <option value="已修复" {% if filters.status == '已修复' %}selected{% endif %}>已修复</option>
+                            <option value="已验证" {% if filters.status == '已验证' %}selected{% endif %}>已验证</option>
+                            <option value="重新打开" {% if filters.status == '重新打开' %}selected{% endif %}>重新打开</option>
+                            <option value="关闭" {% if filters.status == '关闭' %}selected{% endif %}>关闭</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="priority" class="form-label">优先级</label>
+                        <select class="form-select" id="priority" name="priority">
+                            <option value="">全部优先级</option>
+                            <option value="P0" {% if filters.priority == 'P0' %}selected{% endif %}>P0 - 最高</option>
+                            <option value="P1" {% if filters.priority == 'P1' %}selected{% endif %}>P1 - 很高</option>
+                            <option value="P2" {% if filters.priority == 'P2' %}selected{% endif %}>P2 - 高</option>
+                            <option value="P3" {% if filters.priority == 'P3' %}selected{% endif %}>P3 - 中</option>
+                            <option value="P4" {% if filters.priority == 'P4' %}selected{% endif %}>P4 - 低</option>
+                            <option value="P5" {% if filters.priority == 'P5' %}selected{% endif %}>P5 - 最低</option>
+                        </select>
+                    </div>
+                    <div class="col-md-9">
+                        <label for="search" class="form-label">搜索标题</label>
+                        <input type="text" class="form-control" id="search" name="search" value="{{ filters.search or '' }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div>
+                            <button type="submit" class="btn btn-primary">筛选</button>
+                            <a href="{{ url_for('defects.defects') }}" class="btn btn-secondary">重置</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 缺陷列表 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">缺陷列表</h5>
+            </div>
+            <div class="card-body">
+                {% if defects %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>缺陷编号</th>
+                                    <th>标题</th>
+                                    <th>所属项目</th>
+                                    <th>优先级</th>
+                                    <th>状态</th>
+                                    <th>负责人</th>
+                                    <th>处理人</th>
+                                    <th>创建时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for defect in defects %}
+                                <tr>
+                                    <td>{{ defect.defect_id or '无' }}</td>
+                                    <td>{{ defect.title }}</td>
+                                    <td>{{ defect.project.name if defect.project else '无' }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if defect.priority == 'P0' %}danger{% elif defect.priority == 'P1' %}warning{% elif defect.priority == 'P2' %}info{% elif defect.priority == 'P3' %}primary{% elif defect.priority == 'P4' %}secondary{% else %}light{% endif %}">
+                                            {{ defect.priority }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if defect.status == '待处理' %}secondary{% elif defect.status == '问题修复中' %}warning{% elif defect.status == '已修复' %}info{% elif defect.status == '已验证' %}primary{% elif defect.status == '重新打开' %}danger{% elif defect.status == '关闭' %}success{% else %}light{% endif %}">
+                                            {{ defect.status }}
+                                        </span>
+                                    </td>
+                                    <td>{{ defect.assignee.name if defect.assignee else '未分配' }}</td>
+                                    <td>{{ defect.resolver.name if defect.resolver else '未处理' }}</td>
+                                    <td>{{ defect.created_at.strftime('%Y-%m-%d %H:%M:%S') if defect.created_at else '' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('defects.edit_defect', defect_id=defect.id) }}" 
+                                           class="btn btn-sm btn-primary">编辑</a>
+                                        <button class="btn btn-sm btn-danger" 
+                                                onclick="deleteDefect({{ defect.id }})">删除</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 分页 -->
+                    {% if pagination %}
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if pagination.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('defects.defects', page=pagination.prev_num, **request.args) }}">上一页</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in pagination.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != pagination.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('defects.defects', page=page_num, **request.args) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if pagination.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('defects.defects', page=pagination.next_num, **request.args) }}">下一页</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center">暂无缺陷数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+    function deleteDefect(defectId) {
+        if (confirm('确定要删除这个缺陷吗？')) {
+            fetch(`/defects/delete/${defectId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('删除成功');
+                    location.reload();
+                } else {
+                    alert('删除失败: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('删除失败: ' + error.message);
+            });
+        }
+    }
+    </script>
+</body>
+</html>

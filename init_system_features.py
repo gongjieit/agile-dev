@@ -166,6 +166,15 @@ def init_system_features():
                 'route_name': 'prototype.prototype_list',
                 'is_enabled': True,
                 'is_public': False
+            },
+
+            # 缺陷管理功能
+            {
+                'name': '缺陷管理',
+                'description': '缺陷的增删改查、导入导出',
+                'route_name': 'defects.defects',
+                'is_enabled': True,
+                'is_public': False
             }
         ]
         
