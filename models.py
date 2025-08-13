@@ -7,6 +7,8 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
+    nickname = db.Column(db.String(64), nullable=False)
+    email = db.Column(db.String(128), nullable=False)
     estimates = db.relationship('Estimate', backref='user', lazy=True)
 
 
