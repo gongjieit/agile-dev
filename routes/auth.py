@@ -65,6 +65,11 @@ def register():
         password = request.form.get('password')
         nickname = request.form.get('nickname')
         email = request.form.get('email')
+
+        print("RRRRRR:" + str(name))
+        print("RRRRRR:" + str(password))
+        print("RRRRRR:" + str(nickname))
+        print("RRRRRR:" + str(email))
         if not name:
             flash('请输入用户名')
             return render_template('register.html')
@@ -83,7 +88,7 @@ def register():
         if has_special_char(name):
             flash('用户名不允许包含特殊字符！')
             return render_template('register.html')
-        if is_all_chinese(nickname):
+        if not is_all_chinese(nickname):
             flash('中文名里包含非中文内容！')
             return render_template('register.html')
         if not is_valid_email(email):
