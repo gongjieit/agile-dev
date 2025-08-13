@@ -63,7 +63,7 @@ def register():
     if request.method == 'POST':
         name = request.form.get('name')
         password = request.form.get('password')
-        nickname = request.form.get('nickName')
+        nickname = request.form.get('nickname')
         email = request.form.get('email')
         if not name:
             flash('请输入用户名')
