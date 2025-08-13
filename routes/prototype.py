@@ -10,14 +10,14 @@ prototype_bp = Blueprint('prototype', __name__)
 
 # 应用权限检查装饰器
 @prototype_bp.before_request
-@check_access_blueprint('prototype')
+@check_access_blueprint('prototype.prototype_list')
 def check_access():
     pass  # 路由权限由装饰器处理
 
 @prototype_bp.route('/prototype')
 def prototype_list():
     """原型图管理主页"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return redirect(url_for('auth.index'))
     
     # 获取所有项目根节点
@@ -28,7 +28,7 @@ def prototype_list():
 @prototype_bp.route('/prototype/project/<int:project_id>')
 def project_prototypes(project_id):
     """查看项目原型图"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     try:
@@ -62,7 +62,7 @@ def project_prototypes(project_id):
 @prototype_bp.route('/prototype/upload', methods=['GET', 'POST'])
 def upload_prototype():
     """上传原型图"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return redirect(url_for('auth.index'))
     
     if request.method == 'POST':
@@ -141,7 +141,7 @@ def upload_prototype():
 @prototype_bp.route('/prototype/image/<int:image_id>')
 def view_prototype(image_id):
     """查看原型图详情"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return redirect(url_for('auth.index'))
     
     prototype = PrototypeImage.query.get_or_404(image_id)
@@ -150,7 +150,7 @@ def view_prototype(image_id):
 @prototype_bp.route('/prototype/image/edit/<int:image_id>', methods=['GET', 'POST'])
 def edit_prototype(image_id):
     """编辑原型图信息"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return redirect(url_for('auth.index'))
     
     prototype = PrototypeImage.query.get_or_404(image_id)
@@ -191,7 +191,7 @@ def edit_prototype(image_id):
 @prototype_bp.route('/prototype/image/delete/<int:image_id>', methods=['POST'])
 def delete_prototype(image_id):
     """删除原型图"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     try:
@@ -219,7 +219,7 @@ def delete_prototype(image_id):
 @prototype_bp.route('/prototype/image/preview/<int:image_id>')
 def preview_prototype(image_id):
     """预览原型图"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     try:
@@ -260,7 +260,7 @@ def preview_prototype(image_id):
 @prototype_bp.route('/prototype/project_nodes/<int:project_id>')
 def get_project_nodes(project_id):
     """获取项目的所有节点（AJAX）"""
-    if not check_system_feature_access(session, 'prototype.prototype'):
+    if not check_system_feature_access(session, 'prototype.prototype_list'):
         return jsonify({'success': False, 'message': '权限不足'})
     
     try:
