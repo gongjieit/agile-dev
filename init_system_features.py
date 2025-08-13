@@ -141,6 +141,15 @@ def init_system_features():
                 'is_public': True
             },
 
+            # 用户管理功能
+            {
+                'name': '用户管理',
+                'description': '用户的增删改查',
+                'route_name': 'users.users',
+                'is_enabled': True,
+                'is_public': False
+            },
+
             # 角色管理功能
             {
                 'name': '角色管理',
