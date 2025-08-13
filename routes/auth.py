@@ -65,11 +65,6 @@ def register():
         password = request.form.get('password')
         nickname = request.form.get('nickname')
         email = request.form.get('email')
-
-        print("RRRRRR:" + str(name))
-        print("RRRRRR:" + str(password))
-        print("RRRRRR:" + str(nickname))
-        print("RRRRRR:" + str(email))
         if not name:
             flash('请输入用户名')
             return render_template('register.html')
