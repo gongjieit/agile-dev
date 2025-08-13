@@ -260,3 +260,25 @@ class TestCase(db.Model):
     user_story = db.relationship('UserStory', foreign_keys=[user_story_id], backref='test_cases')
     created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_test_cases')
     tested_by = db.relationship('User', foreign_keys=[tested_by_id], backref='tested_test_cases')
+
+# 原型图管理模型
+class PrototypeImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    project_node_id = db.Column(db.Integer, db.ForeignKey('project_info.id'), nullable=False)  # 关联项目节点
+    name = db.Column(db.String(128), nullable=False)  # 图片名称
+    description = db.Column(db.Text, nullable=True)  # 图片描述
+    file_path = db.Column(db.String(512), nullable=False)  # 文件存储路径
+    file_size = db.Column(db.Integer, nullable=True)  # 文件大小（字节）
+    mime_type = db.Column(db.String(64), nullable=True)  # 文件MIME类型
+    version = db.Column(db.String(32), default='1.0')  # 版本号
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 上传者
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关联关系
+    project_node = db.relationship('ProjectInfo', backref='prototype_images')
+    uploaded_by = db.relationship('User', backref='uploaded_prototypes')
+    
+    def __repr__(self):
+        return f'<PrototypeImage {self.name}>'
+

@@ -157,6 +157,15 @@ def init_system_features():
                 'route_name': 'test_cases.test_cases',
                 'is_enabled': True,
                 'is_public': False
+            },
+
+            # 原型图管理功能
+            {
+                'name': '原型图管理',
+                'description': '原型图上传、查看和管理',
+                'route_name': 'prototype.prototype_list',
+                'is_enabled': True,
+                'is_public': False
             }
         ]
         

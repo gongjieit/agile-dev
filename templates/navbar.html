@@ -15,6 +15,11 @@
                     <a class="nav-link" href="{{ url_for('projects.projects') }}">项目管理</a>
                 </li>
                 {% endif %}
+                {% if session.get('features', {}) and session.features.get('prototype.prototype_list') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('prototype.prototype_list') }}">UI管理</a>
+                </li>
+                {% endif %}
                 {% if session.get('features', {}) and session.features.get('product_backlog.product_backlog') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('product_backlog.product_backlog') }}">需求管理</a>

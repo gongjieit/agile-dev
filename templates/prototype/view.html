@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ prototype.name }} - 原型图详情</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('prototype.prototype_list') }}">原型图管理</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('prototype.project_prototypes', project_id=prototype.project_node.id) }}">项目原型图</a></li>
+                <li class="breadcrumb-item active" aria-current="page">原型图详情</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>原型图详情</h3>
+            <div>
+                <a href="{{ url_for('prototype.project_prototypes', project_id=prototype.project_node.id) }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> 返回项目
+                </a>
+                <a href="{{ url_for('prototype.prototype_list') }}" class="btn btn-primary ms-2">
+                    <i class="fas fa-th-large"></i> 原型图管理
+                </a>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">原型图预览</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="{{ url_for('static', filename=prototype.file_path) }}" 
+                             class="img-fluid border rounded" 
+                             alt="{{ prototype.name }}"
+                             style="max-height: 600px; object-fit: contain;">
+                        <div class="mt-3">
+                            <a href="{{ url_for('static', filename=prototype.file_path) }}" target="_blank" class="btn btn-primary">
+                                <i class="fas fa-eye"></i> 查看原图
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">原型图信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-borderless">
+                            <tbody>
+                                <tr>
+                                    <td><strong>名称:</strong></td>
+                                    <td>{{ prototype.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>描述:</strong></td>
+                                    <td>{{ prototype.description or '无' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>版本:</strong></td>
+                                    <td>{{ prototype.version }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>文件大小:</strong></td>
+                                    <td>
+                                        {% set file_size = prototype.file_size %}
+                                        {% if file_size %}
+                                            {% if file_size < 1024 %}
+                                                {{ file_size }} Bytes
+                                            {% elif file_size < 1024 * 1024 %}
+                                                {{ "%.2f"|format(file_size / 1024) }} KB
+                                            {% elif file_size < 1024 * 1024 * 1024 %}
+                                                {{ "%.2f"|format(file_size / (1024 * 1024)) }} MB
+                                            {% else %}
+                                                {{ "%.2f"|format(file_size / (1024 * 1024 * 1024)) }} GB
+                                            {% endif %}
+                                        {% else %}
+                                            未知
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>文件类型:</strong></td>
+                                    <td>{{ prototype.mime_type or '未知' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>所属节点:</strong></td>
+                                    <td>{{ prototype.project_node.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>上传者:</strong></td>
+                                    <td>{{ prototype.uploaded_by.name if prototype.uploaded_by else '未知' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>上传时间:</strong></td>
+                                    <td>{{ prototype.created_at.strftime('%Y-%m-%d %H:%M:%S') if prototype.created_at else '未知' }}</td>
+                                </tr>
+                                {% if prototype.updated_at %}
+                                <tr>
+                                    <td><strong>更新时间:</strong></td>
+                                    <td>{{ prototype.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">操作</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('static', filename=prototype.file_path) }}" 
+                               download="{{ prototype.name }}_v{{ prototype.version }}" 
+                               class="btn btn-success">
+                                <i class="fas fa-download"></i> 下载原型图
+                            </a>
+                            <a href="{{ url_for('prototype.edit_prototype', image_id=prototype.id) }}" 
+                               class="btn btn-warning">
+                                <i class="fas fa-edit"></i> 编辑信息
+                            </a>
+                            <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                <i class="fas fa-trash"></i> 删除原型图
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">确认删除</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>您确定要删除原型图 <strong>{{ prototype.name }}</strong> 吗？</p>
+                    <p class="text-danger">此操作不可撤销，原型图文件和相关信息将被永久删除。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 删除确认按钮事件
+            document.getElementById('confirmDelete').addEventListener('click', function() {
+                // 发送删除请求
+                fetch('/prototype/image/delete/{{ prototype.id }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 删除成功，跳转到原型图管理页面
+                        window.location.href = '/prototype';
+                    } else {
+                        // 显示错误消息
+                        alert('删除失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    alert('删除失败: ' + error.message);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

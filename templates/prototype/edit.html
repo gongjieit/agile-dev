@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>编辑 {{ prototype.name }} - 原型图</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('prototype.prototype_list') }}">原型图管理</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('prototype.view_prototype', image_id=prototype.id) }}">原型图详情</a></li>
+                <li class="breadcrumb-item active" aria-current="page">编辑原型图</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>编辑原型图</h3>
+            <a href="{{ url_for('prototype.view_prototype', image_id=prototype.id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> 返回详情
+            </a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">原型图预览</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <img src="{{ url_for('static', filename=prototype.file_path) }}" 
+                             class="img-fluid border rounded" 
+                             alt="{{ prototype.name }}"
+                             style="max-height: 400px; object-fit: contain;">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">编辑信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">名称 *</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ prototype.name }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">描述</label>
+                                <textarea class="form-control" id="description" name="description" 
+                                          rows="3">{{ prototype.description or '' }}</textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="version" class="form-label">版本</label>
+                                <input type="text" class="form-control" id="version" name="version" 
+                                       value="{{ prototype.version }}">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">文件信息</label>
+                                <div class="border rounded p-2 bg-light">
+                                    <small>
+                                        <strong>文件名:</strong> {{ prototype.file_path.split('/')[-1] }}<br>
+                                        <strong>文件大小:</strong> 
+                                        {% set file_size = prototype.file_size %}
+                                        {% if file_size %}
+                                            {% if file_size < 1024 %}
+                                                {{ file_size }} Bytes
+                                            {% elif file_size < 1024 * 1024 %}
+                                                {{ "%.2f"|format(file_size / 1024) }} KB
+                                            {% elif file_size < 1024 * 1024 * 1024 %}
+                                                {{ "%.2f"|format(file_size / (1024 * 1024)) }} MB
+                                            {% else %}
+                                                {{ "%.2f"|format(file_size / (1024 * 1024 * 1024)) }} GB
+                                            {% endif %}
+                                        {% else %}
+                                            未知
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> 保存更改
+                                </button>
+                                <a href="{{ url_for('prototype.view_prototype', image_id=prototype.id) }}" 
+                                   class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> 取消
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

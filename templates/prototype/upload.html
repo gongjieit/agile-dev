@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>上传原型图</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('prototype.prototype_list') }}">原型图管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">上传原型图</li>
+            </ol>
+        </nav>
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">上传原型图</h5>
+                    </div>
+                    <div class="card-body">
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="POST" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="project_node_id" class="form-label">项目节点 *</label>
+                                <select class="form-select" id="project_node_id" name="project_node_id" required>
+                                    <option value="">请选择项目节点</option>
+                                    {% for project in projects %}
+                                        <option value="{{ project.id }}" data-path="{{ project.path }}">
+                                            {{ project.name }} 
+                                            {% if project.short_name %}({{ project.short_name }}){% endif %}
+                                        </option>
+                                        {% for child in project.children %}
+                                            <option value="{{ child.id }}" data-path="{{ child.path }}">
+                                                &nbsp;&nbsp;{{ child.name }}
+                                            </option>
+                                            {% for subchild in child.children %}
+                                                <option value="{{ subchild.id }}" data-path="{{ subchild.path }}">
+                                                    &nbsp;&nbsp;&nbsp;&nbsp;{{ subchild.name }}
+                                                </option>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="name" class="form-label">原型图名称 *</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">描述</label>
+                                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="version" class="form-label">版本</label>
+                                <input type="text" class="form-control" id="version" name="version" value="1.0">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="image_file" class="form-label">选择图片 *</label>
+                                <input type="file" class="form-control" id="image_file" name="image_file" accept="image/*" required>
+                                <div class="form-text">支持格式: PNG, JPG, JPEG, GIF, SVG</div>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('prototype.prototype_list') }}" class="btn btn-secondary">取消</a>
+                                <button type="submit" class="btn btn-primary">上传</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

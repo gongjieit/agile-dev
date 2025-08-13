@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ project.name }} - 原型图</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('prototype.prototype_list') }}">原型图管理</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ project.name }}</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>{{ project.name }} - 原型图</h3>
+            <a href="{{ url_for('prototype.upload_prototype') }}" class="btn btn-primary">
+                <i class="fas fa-upload"></i> 上传原型图
+            </a>
+        </div>
+
+        <div class="row">
+            <!-- 项目结构树 -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">项目结构</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="project-tree">
+                            {% macro render_node(node, level=0) %}
+                                <div class="project-node" style="margin-left: {{ level * 20 }}px;">
+                                    <div class="d-flex align-items-center mb-1">
+                                        {% if node.node_type == 'project' %}
+                                            <i class="fas fa-folder text-warning me-2"></i>
+                                        {% elif node.node_type == 'menu' %}
+                                            <i class="fas fa-folder-open text-info me-2"></i>
+                                        {% else %}
+                                            <i class="fas fa-file text-secondary me-2"></i>
+                                        {% endif %}
+                                        <span class="node-name" data-node-id="{{ node.id }}">{{ node.name }}</span>
+                                    </div>
+                                    
+                                    {% if prototypes_by_node[node.id] %}
+                                        <div class="prototype-list ms-4">
+                                            {% for prototype in prototypes_by_node[node.id] %}
+                                                <div class="prototype-item d-flex align-items-center mb-1">
+                                                    <i class="fas fa-image text-primary me-2"></i>
+                                                    <a href="#" class="prototype-link" data-prototype-id="{{ prototype.id }}">
+                                                        {{ prototype.name }}
+                                                    </a>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% for child in node.children %}
+                                        {{ render_node(child, level + 1) }}
+                                    {% endfor %}
+                                </div>
+                            {% endmacro %}
+                            
+                            {{ render_node(project) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 原型图预览区域 -->
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">原型图预览</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="prototype-preview" class="text-center">
+                            <p class="text-muted">请选择左侧项目节点或原型图查看预览</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 点击节点名称时显示该节点下的所有原型图
+        document.querySelectorAll('.node-name').forEach(element => {
+            element.addEventListener('click', function() {
+                const nodeId = this.dataset.nodeId;
+                loadNodePrototypes(nodeId);
+            });
+        });
+
+        // 点击原型图链接时显示预览
+        document.querySelectorAll('.prototype-link').forEach(element => {
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
+                const prototypeId = this.dataset.prototypeId;
+                previewPrototype(prototypeId);
+            });
+        });
+    });
+
+    function loadNodePrototypes(nodeId) {
+        // 显示加载状态
+        document.getElementById('prototype-preview').innerHTML = '<p class="text-muted">加载中...</p>';
+        
+        // 发送 AJAX 请求获取节点下的原型图
+        fetch(`/prototype/project_nodes/${nodeId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let html = `<h5>节点 "${data.nodes.find(n => n.id == nodeId)?.name || '未知节点'}" 下的原型图</h5>`;
+                    if (data.nodes.length > 0) {
+                        html += '<div class="row">';
+                        data.nodes.forEach(node => {
+                            html += `
+                                <div class="col-md-12 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6>${node.name}</h6>
+                                            <p><small class="text-muted">${node.path || ''}</small></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                    } else {
+                        html += '<p class="text-muted">该节点下暂无原型图</p>';
+                    }
+                    document.getElementById('prototype-preview').innerHTML = html;
+                } else {
+                    document.getElementById('prototype-preview').innerHTML = 
+                        `<p class="text-danger">加载失败: ${data.message}</p>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('prototype-preview').innerHTML = 
+                    `<p class="text-danger">加载失败: ${error.message}</p>`;
+            });
+    }
+
+    function previewPrototype(prototypeId) {
+        // 显示加载状态
+        document.getElementById('prototype-preview').innerHTML = '<p class="text-muted">加载中...</p>';
+        
+        // 发送 AJAX 请求获取原型图详情
+        fetch(`/prototype/image/preview/${prototypeId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const image = data.image;
+                    // 格式化文件大小
+                    const formatFileSize = (bytes) => {
+                        if (bytes === 0) return '0 Bytes';
+                        const k = 1024;
+                        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                        const i = Math.floor(Math.log(bytes) / Math.log(k));
+                        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                    };
+                    
+                    document.getElementById('prototype-preview').innerHTML = `
+                        <div class="prototype-preview-content">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="text-center mb-3">
+                                        <img src="${image.file_path}" class="img-fluid border rounded" alt="${image.name}" 
+                                             style="max-height: 500px; object-fit: contain;">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <h5>${image.name}</h5>
+                                    <div class="mt-3 text-start">
+                                        <p><strong>描述:</strong> ${image.description || '无'}</p>
+                                        <p><strong>版本:</strong> ${image.version}</p>
+                                        <p><strong>文件大小:</strong> ${formatFileSize(image.file_size)}</p>
+                                        <p><strong>上传者:</strong> ${image.uploaded_by}</p>
+                                        <p><strong>上传时间:</strong> ${image.created_at}</p>
+                                        <p><strong>最后更新:</strong> ${image.updated_at || '无'}</p>
+                                        <p><strong>所属节点:</strong> ${image.project_node.name}</p>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="${image.file_path}" target="_blank" class="btn btn-primary">
+                                            <i class="fas fa-eye"></i> 查看原图
+                                        </a>
+                                        <a href="/prototype/image/${prototypeId}" class="btn btn-secondary ms-2">
+                                            <i class="fas fa-info-circle"></i> 详细信息
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('prototype-preview').innerHTML = 
+                        `<p class="text-danger">加载失败: ${data.message}</p>`;
+                }
+            })
+            .catch(error => {
+                document.getElementById('prototype-preview').innerHTML = 
+                    `<p class="text-danger">加载失败: ${error.message}</p>`;
+            });
+    }
+    </script>
+</body>
+</html>
