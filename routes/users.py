@@ -3,7 +3,7 @@ from models import db, User, Estimate, SystemFeature, UserRole, Role
 from decorators import check_access_blueprint
 from utils import check_user_role
 
-users_bp = Blueprint('users', __name__, url_prefix='/users')
+users_bp = Blueprint('users', __name__)
 
 # 应用权限检查装饰器
 @users_bp.before_request
@@ -12,7 +12,7 @@ def check_access():
     pass  # 装饰器会处理权限检查逻辑
 
 
-@users_bp.route('')
+@users_bp.route('/users')
 def users():
     # 添加分页支持
     page = request.args.get('page', 1, type=int)
@@ -33,7 +33,7 @@ def users():
 
     return render_template('users.html', users=users, roles=roles, pagination=users_pagination)
 
-@users_bp.route('/set_admin/<int:user_id>', methods=['POST'])
+@users_bp.route('/users/set_admin/<int:user_id>', methods=['POST'])
 def set_admin(user_id):
     # 检查用户是否为管理员
     is_admin = check_user_role(session.get('user_id'), 'admin')
@@ -53,7 +53,7 @@ def set_admin(user_id):
                 db.session.commit()
     return redirect(url_for('users.users'))
 
-@users_bp.route('/unset_admin/<int:user_id>', methods=['POST'])
+@users_bp.route('/users/unset_admin/<int:user_id>', methods=['POST'])
 def unset_admin(user_id):
     # 检查用户是否为管理员
     is_admin = check_user_role(session.get('user_id'), 'admin')
@@ -71,7 +71,7 @@ def unset_admin(user_id):
     return redirect(url_for('users.users'))
 
 
-@users_bp.route('/delete_user/<int:user_id>', methods=['POST'])
+@users_bp.route('/users/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
     # 检查用户是否为管理员
     is_admin = check_user_role(session.get('user_id'), 'admin')
@@ -88,7 +88,7 @@ def delete_user(user_id):
     return redirect(url_for('users.users'))
 
 
-@users_bp.route('/assign_roles/<int:user_id>', methods=['POST'])
+@users_bp.route('/users/assign_roles/<int:user_id>', methods=['POST'])
 def assign_roles(user_id):
     # 检查用户是否为管理员
     is_admin = check_user_role(session.get('user_id'), 'admin')
@@ -120,7 +120,7 @@ def assign_roles(user_id):
         print(f"分配角色时出错: {str(e)}")  # 记录错误日志
         return jsonify({'success': False, 'message': f'分配失败: {str(e)}'})
 
-@users_bp.route('/get_roles/<int:user_id>')
+@users_bp.route('/users/get_roles/<int:user_id>')
 def get_user_roles(user_id):
     # 检查用户是否为管理员
     is_admin = check_user_role(session.get('user_id'), 'admin')
