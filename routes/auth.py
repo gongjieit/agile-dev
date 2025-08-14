@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import db, User, SystemFeature, RoleSystemFeature, UserRole
 from utils import check_user_role, check_system_feature_access
+import re
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -62,18 +63,92 @@ def register():
     if request.method == 'POST':
         name = request.form.get('name')
         password = request.form.get('password')
-        if not name or not password:
-            flash('请输入用户名和密码')
+        nickname = request.form.get('nickname')
+        email = request.form.get('email')
+        if not name:
+            flash('请输入用户名')
+            return render_template('register.html')
+        else:
+            if len(name) < 3:
+                flash('用户名长度不能小于3个字符！')
+                return render_template('register.html')
+            if len(name) > 30:
+                flash('用户名长度不能大于30个字符！')
+                return render_template('register.html')
+        if not password:
+            flash('请输入密码')
+            return render_template('register.html')
+        if not nickname:
+            flash('请输入中文名')
+            return render_template('register.html')
+        else:
+            if len(nickname) < 2:
+                flash('中文名长度不能小于2个字符！')
+                return render_template('register.html')
+            if len(nickname) > 5:
+                flash('中文名长度不能大于5个字符！')
+                return render_template('register.html')
+        if not email:
+            flash('请输入email')
+            return render_template('register.html')
+        else:
+            if len(email) < 7:
+                flash('email长度不能小于7个字符！')
+                return render_template('register.html')
+            if len(email) > 50:
+                flash('email长度不能大于50个字符！')
+                return render_template('register.html')
+
+        if has_special_char(name):
+            flash('用户名不允许包含特殊字符！')
+            return render_template('register.html')
+        if not is_all_chinese(nickname):
+            flash('中文名里包含非中文内容！')
+            return render_template('register.html')
+        if not is_valid_email(email):
+            flash('email格式不正确！')
             return render_template('register.html')
         if User.query.filter_by(name=name).first():
             flash('用户名已存在')
             return render_template('register.html')
-        user = User(name=name, password=generate_password_hash(password))
+
+        user = User(name=name, password=generate_password_hash(password), nickname=nickname, email=email)
         db.session.add(user)
         db.session.commit()
         flash('注册成功，请登录')
         return redirect(url_for('auth.login'))
     return render_template('register.html')
+
+def has_special_char(s):
+    # 允许的字符：字母、数字、下划线
+    allowed_chars = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_")
+    for char in s:
+        if char not in allowed_chars:
+            return True
+    return False
+
+def is_all_chinese(s):
+    """判断字符串是否全为中文字符（包括中文标点）"""
+    # 遍历字符串中的每个字符
+    for char in s:
+        # 检查字符是否不在中文字符的Unicode范围内
+        if not ('\u4e00' <= char <= '\u9fff'):
+            return False
+    # 排除空字符串的情况
+    return len(s) > 0
+
+
+def is_valid_email(email):
+    # 邮箱格式正则表达式
+    # 解释：
+    # ^[a-zA-Z0-9_.+-]+ ：用户名部分，允许字母、数字、下划线、点、加号、减号
+    # @ ：必须包含@符号
+    # [a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)* ：域名部分（如example.com、mail.co.uk）
+    # \.[a-zA-Z]{2,} ：顶级域名（如.com、.org、.cn，至少2个字母）
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+
+    # 使用re.fullmatch检查整个字符串是否完全匹配
+    return bool(re.fullmatch(pattern, email))
 
 @auth_bp.route('/logout')
 def logout():
