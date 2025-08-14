@@ -14,7 +14,15 @@ def check_access():
 
 @users_bp.route('/')
 def users():
-    users = User.query.all()
+    # 添加分页支持
+    page = request.args.get('page', 1, type=int)
+    per_page = 10  # 每页显示10个用户
+
+    # 使用 paginate 进行分页查询
+    users_pagination = User.query.order_by(User.id).paginate(
+        page=page, per_page=per_page, error_out=False)
+
+    users = users_pagination.items
     roles = Role.query.all()
 
     # 为每个用户获取角色
@@ -23,7 +31,7 @@ def users():
         user.role_ids = [ur.role_id for ur in user_roles]
         user.role_names = [ur.role.display_name for ur in user_roles]
 
-    return render_template('users.html', users=users, roles=roles)
+    return render_template('users.html', users=users, roles=roles, pagination=users_pagination)
 
 @users_bp.route('/set_admin/<int:user_id>', methods=['POST'])
 def set_admin(user_id):
