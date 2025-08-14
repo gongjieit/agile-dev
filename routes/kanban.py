@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify
-from models import db, Task, UserStory, User, Sprint, SprintBacklog, ProjectInfo
+from models import db, Task, UserStory, User, Sprint, SprintBacklog, ProjectInfo, Defect
 from utils import check_system_feature_access
 from decorators import check_access_blueprint
 from datetime import datetime, timedelta
@@ -110,6 +110,42 @@ def get_kanban_data(sprint_id):
                 'story_id': story.story_id if story else ''
             })
 
+        # 获取该迭代下的所有缺陷
+        defects = Defect.query.filter_by(sprint_id=sprint_id).all()
+
+        # 获取缺陷相关的用户信息
+        defect_user_ids = []
+        for defect in defects:
+            if defect.assignee_id:
+                defect_user_ids.append(defect.assignee_id)
+            if defect.resolver_id:
+                defect_user_ids.append(defect.resolver_id)
+
+        defect_users = User.query.filter(User.id.in_(defect_user_ids)).all() if defect_user_ids else []
+        defect_user_dict = {user.id: user for user in defect_users}
+
+        # 转换缺陷为字典格式
+        defects_data = []
+        for defect in defects:
+            defects_data.append({
+                'id': defect.id,
+                'defect_id': defect.defect_id or '',
+                'title': defect.title,
+                'description': defect.description or '',
+                'status': defect.status,
+                'priority': defect.priority,
+                'severity': defect.severity,
+                'defect_type': defect.defect_type,
+                'assignee_name': defect_user_dict[
+                    defect.assignee_id].name if defect.assignee_id and defect.assignee_id in defect_user_dict else '',
+                'assignee_id': defect.assignee_id,
+                'resolver_name': defect_user_dict[
+                    defect.resolver_id].name if defect.resolver_id and defect.resolver_id in defect_user_dict else '',
+                'resolver_id': defect.resolver_id,
+                'created_at': defect.created_at.strftime('%Y-%m-%d %H:%M:%S') if defect.created_at else '',
+                'updated_at': defect.updated_at.strftime('%Y-%m-%d %H:%M:%S') if defect.updated_at else ''
+            })
+
         # 计算燃尽图数据
         burndown_data = calculate_burndown_data(sprint, sprint_backlogs)
 
@@ -132,6 +168,7 @@ def get_kanban_data(sprint_id):
             'success': True,
             'columns': columns,
             'tasks': tasks_data,
+            'defects': defects_data,
             'burndown_data': burndown_data,
             'sprint_info': sprint_info,
             'project_info': project_info,
@@ -283,3 +320,78 @@ def get_task_detail(task_id):
         'success': True,
         'task': task_data
     })
+
+
+@kanban_bp.route('/get_defects_data/<int:sprint_id>')
+def get_defects_data(sprint_id):
+    """获取指定迭代的缺陷数据"""
+    # 检查权限
+    if not check_system_feature_access(session, 'kanban.kanban'):
+        return jsonify({'success': False, 'message': '权限不足'})
+
+    try:
+        # 获取迭代
+        sprint = db.session.get(Sprint, sprint_id)
+        if not sprint:
+            return jsonify({'success': False, 'message': '迭代不存在'})
+
+        # 获取该迭代下的所有缺陷
+        defects = Defect.query.filter_by(sprint_id=sprint_id).all()
+
+        # 获取项目信息
+        project_info = None
+        if sprint.project:
+            project_info = {
+                'name': sprint.project.name,
+                'short_name': sprint.project.short_name or ''
+            }
+
+        # 获取用户信息
+        user_ids = []
+        for defect in defects:
+            if defect.assignee_id:
+                user_ids.append(defect.assignee_id)
+            if defect.resolver_id:
+                user_ids.append(defect.resolver_id)
+
+        users = User.query.filter(User.id.in_(user_ids)).all() if user_ids else []
+        user_dict = {user.id: user for user in users}
+
+        # 转换缺陷为字典格式
+        defects_data = []
+        for defect in defects:
+            defects_data.append({
+                'id': defect.id,
+                'defect_id': defect.defect_id or '',
+                'title': defect.title,
+                'description': defect.description or '',
+                'status': defect.status,
+                'priority': defect.priority,
+                'severity': defect.severity,
+                'defect_type': defect.defect_type,
+                'assignee_name': user_dict[
+                    defect.assignee_id].name if defect.assignee_id and defect.assignee_id in user_dict else '',
+                'assignee_id': defect.assignee_id,
+                'resolver_name': user_dict[
+                    defect.resolver_id].name if defect.resolver_id and defect.resolver_id in user_dict else '',
+                'resolver_id': defect.resolver_id,
+                'created_at': defect.created_at.strftime('%Y-%m-%d %H:%M:%S') if defect.created_at else '',
+                'updated_at': defect.updated_at.strftime('%Y-%m-%d %H:%M:%S') if defect.updated_at else ''
+            })
+
+        # 获取所有用户用于缺陷分配
+        all_users = User.query.all()
+        users_data = [{'id': user.id, 'name': user.name} for user in all_users]
+
+        return jsonify({
+            'success': True,
+            'defects': defects_data,
+            'project_info': project_info,
+            'sprint_id': sprint_id,
+            'users': users_data
+        })
+    except Exception as e:
+        # 捕获所有异常并返回错误信息
+        import traceback
+        traceback.print_exc()  # 打印错误堆栈信息，方便调试
+        return jsonify({'success': False, 'message': f'服务器内部错误: {str(e)}'})
