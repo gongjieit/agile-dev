@@ -114,13 +114,70 @@
     </div>
 </nav>
 <script>
-    var oUl = document.querySelectorAll('.navbar-nav li.nav-item');
-    console.log(oUl)
-    for(var i = 0;i<oUl.length;i++){
-        oUl[i].index = i;
-        oUl[i].onclick = function(){
-            console.log(this)
-            this.className = 'nav-item active-nav-item';
-        }
-    }
+   var str = window.location.href.substring(window.location.href.lastIndexOf('/')+1);
+   console.log(str)
+   var navBarArr = [
+       {
+           name:'首页',
+           value:'index'
+       },
+       {
+           name:'项目管理',
+           value:'projects'
+       },
+       {
+           name:'需求管理',
+           value:'product_backlog'
+       },
+       {
+           name:'用户故事',
+           value:'user_stories'
+       },
+       {
+           name:'迭代管理',
+           value:'sprints'
+       },
+       {
+           name:'任务管理',
+           value:'tasks'
+       },
+       {
+           name:'测试用例',
+           value:'test_cases'
+       },
+       {
+           name:'敏捷看板',
+           value:'kanban'
+       },
+       {
+           name:'用户管理',
+           value:'users'
+       },
+       {
+           name:'角色管理',
+           value:'roles'
+       },
+       {
+           name:'知识管理',
+           value:'manage'
+       },
+       {
+           name:'知识库',
+           value:'knowledge_view'
+       },
+       {
+           name:'字典管理',
+           value:'dict'
+       }
+   ]
+   var obj = navBarArr.filter(item=>item.value==str);
+   console.log(obj)
+   var aA = document.querySelectorAll('.navbar-nav li a');
+   for(var i = 0;i<aA.length;i++){
+       if(aA[i].innerHTML==obj[0].name){
+           aA[i].style.color = '#fff';
+           aA[i].style.fontWeight = 'bold';
+
+       }
+   }
 </script>
