@@ -17,9 +17,16 @@ def knowledge():
     if not check_system_feature_access(session, 'knowledge.manage'):
         return redirect(url_for('auth.index'))
 
-    # 获取所有知识文章，按更新时间倒序排列
-    knowledge_articles = AgileKnowledge.query.order_by(AgileKnowledge.updated_at.desc()).all()
-    return render_template('knowledge_list.html', knowledge_articles=knowledge_articles)
+    # 添加分页支持
+    page = request.args.get('page', 1, type=int)
+    per_page = 10  # 每页显示10篇文章
+
+    # 使用 paginate 进行分页查询
+    knowledge_pagination = AgileKnowledge.query.order_by(AgileKnowledge.updated_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False)
+
+    knowledge_articles = knowledge_pagination.items
+    return render_template('knowledge_list.html', knowledge_articles=knowledge_articles, pagination=knowledge_pagination)
 
 
 @knowledge_bp.route('/add_knowledge', methods=['GET', 'POST'])

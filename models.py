@@ -284,3 +284,38 @@ class PrototypeImage(db.Model):
     def __repr__(self):
         return f'<PrototypeImage {self.name}>'
 
+
+# 缺陷模型
+class Defect(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    defect_id = db.Column(db.String(64), unique=True, nullable=True)  # 缺陷编号
+    title = db.Column(db.String(256), nullable=False)  # 标题（必填）
+    project_id = db.Column(db.Integer, db.ForeignKey('project_info.id'), nullable=False)  # 所属项目（必填）
+    sprint_id = db.Column(db.Integer, db.ForeignKey('sprint.id'), nullable=True)  # 所属迭代
+    work_item_type = db.Column(db.String(32), default='defect', nullable=False)  # 工作项类型（必填）
+    description = db.Column(db.Text, nullable=True)  # 缺陷描述：支持富文本编辑
+    assignee_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 负责人：默认为创建者
+    priority = db.Column(db.String(8), default='P3')  # 优先级：P0-P5
+    is_online = db.Column(db.Boolean, default=False)  # 是否线上缺陷：默认否
+    severity = db.Column(db.String(32), default='一般')  # 严重程度：致命，严重，一般，提示，建议，保留
+    defect_type = db.Column(db.String(64), default='功能问题')  # 缺陷类型
+    status = db.Column(db.String(32), default='待处理')  # 缺陷状态：默认为待处理
+    resolver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 解决者：默认为未设置
+    resolution = db.Column(db.String(64), default='未设置')  # 处理结果：为空为未设置
+    dev_team = db.Column(db.String(128), nullable=True)  # 开发团队
+    collaborators = db.Column(db.String(256), nullable=True)  # 协助者：默认为未设置
+    start_date = db.Column(db.Date, nullable=True)  # 开始日期：默认为未设置
+    end_date = db.Column(db.Date, nullable=True)  # 结束日期：默认为未设置
+    created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 创建人
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+
+    # 关联关系
+    project = db.relationship('ProjectInfo', foreign_keys=[project_id], backref='defects')
+    sprint = db.relationship('Sprint', foreign_keys=[sprint_id], backref='defects')
+    assignee = db.relationship('User', foreign_keys=[assignee_id], backref='assigned_defects')
+    resolver = db.relationship('User', foreign_keys=[resolver_id], backref='resolved_defects')
+    created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_defects')
+
+    def __repr__(self):
+        return f'<Defect {self.defect_id or self.title}>'

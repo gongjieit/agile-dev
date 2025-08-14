@@ -257,6 +257,9 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="kanban-tab" data-bs-toggle="tab" data-bs-target="#kanban" type="button" role="tab" aria-controls="kanban" aria-selected="false">敏捷看板</button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="defects-tab" data-bs-toggle="tab" data-bs-target="#defects" type="button" role="tab" aria-controls="defects" aria-selected="false">缺陷列表</button>
+            </li>
         </ul>
 
         <!-- Tab内容 -->
@@ -337,7 +340,49 @@
                     <p class="text-muted text-center">请选择一个迭代查看看板</p>
                 </div>
             </div>
+
+            <!-- 缺陷列表Tab -->
+            <div class="tab-pane fade" id="defects" role="tabpanel" aria-labelledby="defects-tab">
+                <div id="defects-container" class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">缺陷列表</h5>
+                                <button class="btn btn-primary btn-sm" onclick="refreshDefects()">
+                                    <i class="fas fa-sync-alt"></i> 刷新
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="defects-table">
+                                        <thead>
+                                            <tr>
+                                                <th>缺陷编号</th>
+                                                <th>标题</th>
+                                                <th>优先级</th>
+                                                <th>严重程度</th>
+                                                <th>状态</th>
+                                                <th>负责人</th>
+                                                <th>处理人</th>
+                                                <th>创建时间</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- 缺陷数据将通过JavaScript动态加载 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="defects-placeholder" class="text-center text-muted mt-4">
+                                    <p>请选择一个迭代查看缺陷信息</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
     </div>
 
     <!-- 任务详情模态框 -->
@@ -372,6 +417,7 @@
             const sprintId = this.value;
             const kanbanContainer = document.getElementById('kanban-container');
             const infoAndChartContainer = document.getElementById('info-and-chart-container');
+            const defectsPlaceholder = document.getElementById('defects-placeholder');
 
             currentSprintId = sprintId;
             // 重置筛选器
@@ -380,12 +426,17 @@
             if (!sprintId) {
                 kanbanContainer.innerHTML = '<p class="text-muted text-center">请选择一个迭代查看看板</p>';
                 infoAndChartContainer.style.display = 'none';
+                defectsPlaceholder.style.display = 'block';
+                // 清空缺陷列表
+                document.querySelector('#defects-table tbody').innerHTML = '';
                 return;
             }
 
             // 显示加载状态
             kanbanContainer.innerHTML = '<p class="text-muted text-center">加载中...</p>';
             infoAndChartContainer.style.display = 'none';
+            defectsPlaceholder.style.display = 'block';
+            document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center">加载中...</td></tr>';
 
             // 获取看板数据
             fetch(`/get_kanban_data/${sprintId}`)
@@ -413,18 +464,165 @@
                             infoAndChartContainer.style.display = 'flex';
                         }
 
+                        // 加载缺陷数据（仅当缺陷Tab处于激活状态时）
+                        const defectsTab = document.getElementById('defects-tab');
+                        if (defectsTab.classList.contains('active')) {
+                            displayDefects(data.defects || []);
+                            defectsPlaceholder.style.display = 'none';
+                        }
+
                         // 存储数据以便在Tab切换时使用
                         window.kanbanData = data;
                     } else {
                         kanbanContainer.innerHTML = '<p class="text-danger text-center">加载失败: ' + data.message + '</p>';
                         infoAndChartContainer.style.display = 'none';
+                        defectsPlaceholder.style.display = 'block';
+                        document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">加载失败: ' + data.message + '</td></tr>';
                     }
                 })
                 .catch(error => {
                     kanbanContainer.innerHTML = '<p class="text-danger text-center">加载失败: ' + error + '</p>';
                     infoAndChartContainer.style.display = 'none';
+                    defectsPlaceholder.style.display = 'block';
+                    document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">加载失败: ' + error + '</td></tr>';
                 });
         });
+
+        // 刷新缺陷列表
+        function refreshDefects() {
+            const sprintId = document.getElementById('sprint-select').value;
+            if (!sprintId) {
+                showNotification('请先选择一个迭代', 'warning');
+                return;
+            }
+
+            const defectsPlaceholder = document.getElementById('defects-placeholder');
+            defectsPlaceholder.style.display = 'block';
+            document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center">加载中...</td></tr>';
+
+            fetch(`/get_kanban_data/${sprintId}`)
+                .then(response => {
+                    // 检查响应是否为JSON格式
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('服务器返回了非JSON响应');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        displayDefects(data.defects);
+                        defectsPlaceholder.style.display = 'none';
+                        // 更新缓存数据
+                        window.kanbanData = data;
+                    } else {
+                        showNotification('加载缺陷数据失败: ' + data.message, 'error');
+                        defectsPlaceholder.style.display = 'block';
+                        document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">加载失败: ' + data.message + '</td></tr>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('加载缺陷数据时发生错误', 'error');
+                    defectsPlaceholder.style.display = 'block';
+                    document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">加载失败: ' + error + '</td></tr>';
+                });
+        }
+
+
+        // 加载缺陷数据
+        function loadDefectsData(sprintId) {
+            fetch(`/kanban/get_defects_data/${sprintId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayDefects(data.defects);
+                        document.getElementById('defects-placeholder').style.display = 'none';
+                    } else {
+                        showNotification('加载缺陷数据失败: ' + data.message, 'error');
+                        document.getElementById('defects-placeholder').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('加载缺陷数据时发生错误', 'error');
+                    document.getElementById('defects-placeholder').style.display = 'block';
+                });
+        }
+
+        // 显示缺陷列表
+        function displayDefects(defects) {
+            const tbody = document.querySelector('#defects-table tbody');
+            tbody.innerHTML = '';
+
+            if (defects.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="9" class="text-center">该迭代暂无缺陷</td>';
+                tbody.appendChild(row);
+                return;
+            }
+
+            defects.forEach(defect => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${defect.defect_id || '无'}</td>
+                    <td>${defect.title}</td>
+                    <td>
+                        <span class="badge bg-${getDefectPriorityClass(defect.priority)}">
+                            ${defect.priority}
+                        </span>
+                    </td>
+                    <td>${defect.severity}</td>
+                    <td>
+                        <span class="badge bg-${getDefectStatusClass(defect.status)}">
+                            ${defect.status}
+                        </span>
+                    </td>
+                    <td>${defect.assignee_name || '未分配'}</td>
+                    <td>${defect.resolver_name || '未处理'}</td>
+                    <td>${defect.created_at}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="viewDefect(${defect.id})">
+                            查看
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // 查看缺陷详情（可以链接到缺陷管理页面）
+        function viewDefect(defectId) {
+            // 这里可以打开模态框显示缺陷详情，或者跳转到缺陷详情页
+            window.open(`/defects/edit/${defectId}`, '_blank');
+        }
+
+        // 获取缺陷优先级样式类
+        function getDefectPriorityClass(priority) {
+            switch (priority) {
+                case 'P0': return 'danger';
+                case 'P1': return 'warning';
+                case 'P2': return 'info';
+                case 'P3': return 'primary';
+                case 'P4': return 'secondary';
+                case 'P5': return 'light';
+                default: return 'secondary';
+            }
+        }
+
+        // 获取缺陷状态样式类
+        function getDefectStatusClass(status) {
+            switch (status) {
+                case '待处理': return 'secondary';
+                case '问题修复中': return 'warning';
+                case '已修复': return 'info';
+                case '已验证': return 'primary';
+                case '重新打开': return 'danger';
+                case '关闭': return 'success';
+                default: return 'secondary';
+            }
+        }
+
 
         // Tab切换事件
         document.addEventListener('DOMContentLoaded', function() {
@@ -464,6 +662,43 @@
                         })
                         .catch(error => {
                             kanbanContainer.innerHTML = '<p class="text-danger text-center">加载失败: ' + error + '</p>';
+                        });
+                }
+            });
+
+            // 缺陷列表Tab激活事件
+            document.getElementById('defects-tab').addEventListener('shown.bs.tab', function (e) {
+                const defectsPlaceholder = document.getElementById('defects-placeholder');
+                if (currentSprintId && window.kanbanData) {
+                    displayDefects(window.kanbanData.defects);
+                    defectsPlaceholder.style.display = 'none';
+                } else if (currentSprintId) {
+                    // 如果有选中的迭代但没有数据，重新加载
+                    defectsPlaceholder.style.display = 'block';
+                    document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center">加载中...</td></tr>';
+                    fetch(`/get_kanban_data/${currentSprintId}`)
+                        .then(response => {
+                            // 检查响应是否为JSON格式
+                            const contentType = response.headers.get('content-type');
+                            if (!contentType || !contentType.includes('application/json')) {
+                                throw new Error('服务器返回了非JSON响应');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data.success) {
+                                displayDefects(data.defects);
+                                defectsPlaceholder.style.display = 'none';
+                                // 存储数据以便后续使用
+                                window.kanbanData = data;
+                            } else {
+                                defectsPlaceholder.style.display = 'block';
+                                document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">加载失败: ' + data.message + '</td></tr>';
+                            }
+                        })
+                        .catch(error => {
+                            defectsPlaceholder.style.display = 'block';
+                            document.querySelector('#defects-table tbody').innerHTML = '<tr><td colspan="9" class="text-center text-danger">加载失败: ' + error + '</td></tr>';
                         });
                 }
             });

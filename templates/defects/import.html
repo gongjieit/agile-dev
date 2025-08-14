@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>导入缺陷</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2>导入缺陷</h2>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>导入说明</h5>
+                    </div>
+                    <div class="card-body">
+                        <p>请上传.xlsx格式的Excel文件：</p>
+                        <p>注意：</p>
+                        <ul>
+                            <li>缺陷标题为必填项</li>
+                            <li>缺陷编号由系统自动生成（导入数据时直接为空即可）</li>
+                            <li>所属项目为必填项，需要填写项目名称（必须是系统中已存在的项目）</li>
+                            <li>创建时间可由系统自动生成（当前时间）</li>
+                            <li>Excel文件应包含表头行，列名应与导出文件一致</li>
+                        </ul>
+                        <p>建议先导出一个模板文件，按照模板格式填写数据后再导入。</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>上传文件</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="file" class="form-label">选择Excel文件</label>
+                                <input class="form-control" type="file" id="file" name="file" accept=".xlsx" required>
+                                <div class="form-text">只支持.xlsx格式的文件</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> 导入
+                            </button>
+                            <a href="{{ url_for('defects.defects') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> 取消
+                            </a>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>

@@ -68,18 +68,37 @@ def register():
         if not name:
             flash('请输入用户名')
             return render_template('register.html')
+        else:
+            if len(name) < 3:
+                flash('用户名长度不能小于3个字符！')
+                return render_template('register.html')
+            if len(name) > 30:
+                flash('用户名长度不能大于30个字符！')
+                return render_template('register.html')
         if not password:
             flash('请输入密码')
             return render_template('register.html')
         if not nickname:
             flash('请输入中文名')
             return render_template('register.html')
+        else:
+            if len(nickname) < 2:
+                flash('中文名长度不能小于2个字符！')
+                return render_template('register.html')
+            if len(nickname) > 5:
+                flash('中文名长度不能大于5个字符！')
+                return render_template('register.html')
         if not email:
             flash('请输入email')
             return render_template('register.html')
-        if User.query.filter_by(name=name).first():
-            flash('用户名已存在')
-            return render_template('register.html')
+        else:
+            if len(email) < 7:
+                flash('email长度不能小于7个字符！')
+                return render_template('register.html')
+            if len(email) > 50:
+                flash('email长度不能大于50个字符！')
+                return render_template('register.html')
+
         if has_special_char(name):
             flash('用户名不允许包含特殊字符！')
             return render_template('register.html')

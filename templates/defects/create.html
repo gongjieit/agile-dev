@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>新增缺陷</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+    <style>
+        .ck-editor__editable {
+            min-height: 300px !important;
+        }
+    </style>
+</head>
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2>新增缺陷</h2>
+
+                <form method="POST" enctype="multipart/form-data" id="defectForm">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>基本信息</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="title" class="form-label">缺陷标题 *</label>
+                                        <input type="text" class="form-control" id="title" name="title" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="project_id" class="form-label">所属项目 *</label>
+                                        <select class="form-select" id="project_id" name="project_id" required>
+                                            <option value="">请选择项目</option>
+                                            {% for project in projects %}
+                                            <option value="{{ project.id }}">{{ project.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="sprint_id" class="form-label">所属迭代</label>
+                                        <select class="form-select" id="sprint_id" name="sprint_id">
+                                            <option value="">请选择迭代</option>
+                                            {% for sprint in sprints %}
+                                            <option value="{{ sprint.id }}">{{ sprint.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="description" class="form-label">缺陷描述 *</label>
+                                        <textarea class="form-control" id="description" name="description" rows="10"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h5>详细信息</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="priority" class="form-label">优先级</label>
+                                                <select class="form-select" id="priority" name="priority">
+                                                    <option value="P0">P0</option>
+                                                    <option value="P1">P1</option>
+                                                    <option value="P2">P2</option>
+                                                    <option value="P3" selected>P3</option>
+                                                    <option value="P4">P4</option>
+                                                    <option value="P5">P5</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="severity" class="form-label">严重程度</label>
+                                                <select class="form-select" id="severity" name="severity">
+                                                    <option value="致命">致命</option>
+                                                    <option value="严重">严重</option>
+                                                    <option value="一般" selected>一般</option>
+                                                    <option value="提示">提示</option>
+                                                    <option value="建议">建议</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="defect_type" class="form-label">缺陷类型</label>
+                                                <select class="form-select" id="defect_type" name="defect_type">
+                                                    <option value="功能问题" selected>功能问题</option>
+                                                    <option value="界面优化">界面优化</option>
+                                                    <option value="设计缺陷">设计缺陷</option>
+                                                    <option value="性能问题">性能问题</option>
+                                                    <option value="安全问题">安全问题</option>
+                                                    <option value="兼容问题">兼容问题</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="assignee_id" class="form-label">负责人</label>
+                                                <select class="form-select" id="assignee_id" name="assignee_id">
+                                                    <option value="">未分配</option>
+                                                    {% for user in users %}
+                                                    <option value="{{ user.id }}">{{ user.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="resolver_id" class="form-label">处理人</label>
+                                                <select class="form-select" id="resolver_id" name="resolver_id">
+                                                    <option value="">未分配</option>
+                                                    {% for user in users %}
+                                                    <option value="{{ user.id }}">{{ user.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="status" class="form-label">缺陷状态</label>
+                                                <select class="form-select" id="status" name="status">
+                                                    <option value="待处理" selected>待处理</option>
+                                                    <option value="问题修复中">问题修复中</option>
+                                                    <option value="已修复">已修复</option>
+                                                    <option value="已验证">已验证</option>
+                                                    <option value="重新打开">重新打开</option>
+                                                    <option value="关闭">关闭</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="resolution" class="form-label">处理结果</label>
+                                                <select class="form-select" id="resolution" name="resolution">
+                                                    <option value="未设置" selected>未设置</option>
+                                                    <option value="已解决">已解决</option>
+                                                    <option value="无法重现">无法重现</option>
+                                                    <option value="延期处理">延期处理</option>
+                                                    <option value="不修复">不修复</option>
+                                                    <option value="重复问题">重复问题</option>
+                                                    <option value="非问题">非问题</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="is_online" class="form-label">是否线上缺陷</label>
+                                                <select class="form-select" id="is_online" name="is_online">
+                                                    <option value="False" selected>否</option>
+                                                    <option value="True">是</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="dev_team" class="form-label">开发团队</label>
+                                                <input type="text" class="form-control" id="dev_team" name="dev_team">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                        <a href="{{ url_for('defects.defects') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 取消
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+
+        ClassicEditor
+            .create(document.querySelector('#description'), {
+                toolbar: [
+                    'heading', '|',
+                    'bold', 'italic', 'link', 'bulletedList', 'numberedList', 'blockQuote', '|',
+                    'outdent', 'indent', '|',
+                    'imageUpload', 'insertTable', 'mediaEmbed', '|',
+                    'undo', 'redo'
+                ],
+                language: 'zh-cn',
+                ckfinder: {
+                    uploadUrl: '{{ url_for("defects.upload_image") }}'
+                },
+                image: {
+                    toolbar: [
+                        'imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side'
+                    ]
+                }
+            })
+            .then(newEditor => {
+                editor = newEditor;
+            })
+            .catch(error => {
+                console.error(error);
+            });
+
+        // 表单提交前验证
+        document.getElementById('defectForm').addEventListener('submit', function(e) {
+            // 验证缺陷描述是否为空
+            const descriptionData = editor.getData().trim();
+            if (!descriptionData) {
+                e.preventDefault();
+                alert('请输入缺陷描述');
+                return false;
+            }
+
+            // 将编辑器内容同步到textarea
+            document.getElementById('description').value = descriptionData;
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>
