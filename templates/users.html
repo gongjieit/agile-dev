@@ -152,6 +152,17 @@
     </div>
 </div>
 
+<!-- 显示分页信息 -->
+{% if pagination %}
+<div class="mt-3 text-muted text-center">
+    <small>
+        显示第 {{ ((pagination.page - 1) * pagination.per_page + 1) if pagination.items else 0 }}
+        到第 {{ ((pagination.page - 1) * pagination.per_page + pagination.items|length) if pagination.items else 0 }}
+        条记录，共 {{ pagination.total }} 条记录
+    </small>
+</div>
+{% endif %}
+
 <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
 <script>
     // 分配角色按钮点击事件
