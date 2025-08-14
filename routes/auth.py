@@ -50,7 +50,7 @@ def login():
         user = User.query.filter_by(name=name).first()
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
-            session['username'] = user.name  # 添加这行来设置username会话变量
+            session['username'] = user.nickname  # 添加这行来设置username会话变量
             # 检查用户是否具有管理员角色
             #is_admin = check_user_role(user.id, 'admin')
             #session['is_admin'] = is_admin
