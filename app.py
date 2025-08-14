@@ -23,6 +23,7 @@ from routes.product_backlog import product_backlog_bp
 from routes.test_cases import test_cases_bp
 from routes.prototype import prototype_bp
 from routes.defects import defects_bp
+from routes.dict import dict_bp
 
 def create_app():
     app = Flask(__name__)
@@ -74,6 +75,7 @@ def create_app():
     app.register_blueprint(test_cases_bp)
     app.register_blueprint(prototype_bp)
     app.register_blueprint(defects_bp)
+    app.register_blueprint(dict_bp)
 
     return app
 
