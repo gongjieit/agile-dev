@@ -159,12 +159,12 @@
                                     </td>
                                     <td>{{ backlog.created_at.strftime('%Y-%m-%d') if backlog.created_at else '' }}</td>
                                     <td class="action-buttons">
-                                        <button class="btn btn-sm btn-primary" onclick="editProductBacklog({{ backlog.id }})">
+                                        <span class="text-primary table-btn text-sm-end" onclick="editProductBacklog({{ backlog.id }})">
                                             编辑
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteProductBacklog({{ backlog.id }})">
+                                        </span>
+                                        <span class="text-danger table-btn text-sm" onclick="deleteProductBacklog({{ backlog.id }})">
                                             删除
-                                        </button>
+                                        </span>
                                     </td>
                                 </tr>
                                 {% else %}
