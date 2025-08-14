@@ -1,12 +1,21 @@
         .page-title{
-            font-size:24px;
+            font-size:22px;
             font-weight: bold;
         }
         .card-title{
-             font-size:18px;
+             font-size:16px;
             font-weight: bold;
             margin-bottom: 12px;
         }
         .filter-card{
-            background:#f2f2f2;
+            background:#f2f2f2 !important;
+        }
+        .table-btn{
+            cursor: pointer;
+            font-size:14px;
+            margin-right:5px;
+        }
+        .table tr th,.table tr td{
+            color:#4d4d4d !important;
+            /*height:48px;*/
         }

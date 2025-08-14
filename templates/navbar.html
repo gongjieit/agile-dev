@@ -1,3 +1,8 @@
+<style>
+    .active-nav-item{
+        color:#fff;
+    }
+</style>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
     <div class="container-fluid">
         <a class="navbar-brand" href="{{ url_for('auth.index') }}">敏捷开发平台</a>
@@ -85,22 +90,37 @@
                     <a class="nav-link" href="{{ url_for('knowledge.knowledge_view') }}">知识库</a>
                 </li>
                 {% endif %}
+                {% if session.get('features', {}) and session.features.get('dict.dict') %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('dict.dict') }}">字典管理</a >
+                </li>
+                {% endif %}
                 {% endif %}
             </ul>
             <ul class="navbar-nav">
                 {% if session.user_id %}
-                <li class="nav-item">
-                    <span class="navbar-text me-3">欢迎, {{ session.username }}!</span>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('auth.logout') }}">退出</a>
-                </li>
-                {% else %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('auth.login') }}">登录</a>
-                </li>
+                    <div class="dropdown">
+                      <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        欢迎, {{ session.username }}
+                      </button>
+                      <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">个人信息</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">退出平台</a></li>
+                      </ul>
+                    </div>
                 {% endif %}
             </ul>
         </div>
     </div>
 </nav>
+<script>
+    var oUl = document.querySelectorAll('.navbar-nav li.nav-item');
+    console.log(oUl)
+    for(var i = 0;i<oUl.length;i++){
+        oUl[i].index = i;
+        oUl[i].onclick = function(){
+            console.log(this)
+            this.className = 'nav-item active-nav-item';
+        }
+    }
+</script>
