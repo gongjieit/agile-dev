@@ -12,7 +12,7 @@ def check_access():
     pass  # 装饰器会处理权限检查逻辑
 
 
-@users_bp.route('/')
+@users_bp.route('')
 def users():
     # 添加分页支持
     page = request.args.get('page', 1, type=int)
