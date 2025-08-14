@@ -7,7 +7,7 @@ import re
 auth_bp = Blueprint('auth', __name__)
 
 
-@auth_bp.route('/')
+@auth_bp.route('/index')
 def index():
     user = None
     if 'user_id' in session:
