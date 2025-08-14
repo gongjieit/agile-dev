@@ -92,7 +92,7 @@
                 {% endif %}
                 {% if session.get('features', {}) and session.features.get('dict.dict') %}
                 <li class="nav-item">
-                    <a class="nav-link" href=" 'dict.dict') }}">字典管理</a >
+                    <a class="nav-link" href="{{ url_for('dict.dict') }}">字典管理</a >
                 </li>
                 {% endif %}
                 {% endif %}
