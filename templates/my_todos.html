@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>我的待办事项</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+    <style>
+        .todo-item {
+            border-left: 3px solid #007bff;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #fff;
+            transition: box-shadow 0.2s;
+        }
+
+        .todo-item:hover {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .todo-item.high {
+            border-left-color: #dc3545;
+        }
+
+        .todo-item.medium {
+            border-left-color: #ffc107;
+        }
+
+        .todo-item.low {
+            border-left-color: #28a745;
+        }
+
+        .priority-badge {
+            font-size: 0.75rem;
+        }
+
+        .priority-high {
+            background-color: #dc3545;
+        }
+
+        .priority-medium {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .priority-low {
+            background-color: #28a745;
+        }
+
+        .todo-type-badge {
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .toggle-section {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .toggle-section:hover {
+            background-color: #f8f9fa;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    {% include 'navbar.html' %}
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">我的待办事项</h3>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">待处理事项</h5>
+            </div>
+            <div class="card-body">
+                <div id="todos-container">
+                    <div class="text-center">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在加载待办事项...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 页面加载完成后获取待办事项
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTodos();
+        });
+
+        // 加载待办事项
+        function loadTodos() {
+            fetch('/api/my_todos')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayTodos(data.todos);
+                    } else {
+                        document.getElementById('todos-container').innerHTML =
+                            '<div class="alert alert-danger">加载待办事项失败: ' + data.message + '</div>';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('todos-container').innerHTML =
+                        '<div class="alert alert-danger">加载待办事项时发生错误: ' + error + '</div>';
+                });
+        }
+
+        // 显示待办事项
+        function displayTodos(todos) {
+            const container = document.getElementById('todos-container');
+
+            if (todos.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted py-5"><p class="mb-0">暂无待办事项</p></div>';
+                return;
+            }
+
+            // 按类型分组
+            const groupedTodos = {};
+            todos.forEach(todo => {
+                if (!groupedTodos[todo.type]) {
+                    groupedTodos[todo.type] = [];
+                }
+                groupedTodos[todo.type].push(todo);
+            });
+
+            let html = '';
+
+            // 显示任务相关待办
+            if (groupedTodos.task) {
+                html += `
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">任务相关 <span class="badge bg-secondary">${groupedTodos.task.length}</span></h5>
+                            <button class="btn btn-sm btn-outline-secondary toggle-section" data-target="task-section">
+                                <span class="toggle-text">收起</span>
+                            </button>
+                        </div>
+                        <div id="task-section">
+                            ${groupedTodos.task.map(todo => renderTodoItem(todo)).join('')}                        </div>
+                    </div>
+                `;
+            }
+
+            // 显示迭代相关待办
+            if (groupedTodos.sprint) {
+                html += `
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">迭代相关 <span class="badge bg-secondary">${groupedTodos.sprint.length}</span></h5>
+                            <button class="btn btn-sm btn-outline-secondary toggle-section" data-target="sprint-section">
+                                <span class="toggle-text">收起</span>
+                            </button>
+                        </div>
+                        <div id="sprint-section">
+                            ${groupedTodos.sprint.map(todo => renderTodoItem(todo)).join('')}                        </div>
+                    </div>
+                `;
+            }
+
+            // 显示用户相关待办
+            if (groupedTodos.user) {
+                html += `
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">用户相关 <span class="badge bg-secondary">${groupedTodos.user.length}</span></h5>
+                            <button class="btn btn-sm btn-outline-secondary toggle-section" data-target="user-section">
+                                <span class="toggle-text">收起</span>
+                            </button>
+                        </div>
+                        <div id="user-section">
+                            ${groupedTodos.user.map(todo => renderTodoItem(todo)).join('')}                        </div>
+                    </div>
+                `;
+            }
+
+            // 显示缺陷相关待办
+            if (groupedTodos.defect) {
+                html += `
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="mb-0">缺陷相关 <span class="badge bg-secondary">${groupedTodos.defect.length}</span></h5>
+                            <button class="btn btn-sm btn-outline-secondary toggle-section" data-target="defect-section">
+                                <span class="toggle-text">收起</span>
+                            </button>
+                        </div>
+                        <div id="defect-section">
+                            ${groupedTodos.defect.map(todo => renderTodoItem(todo)).join('')}                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+
+            // 添加折叠功能事件监听器
+            document.querySelectorAll('.toggle-section').forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const targetElement = document.getElementById(targetId);
+                    const toggleText = this.querySelector('.toggle-text');
+
+                    if (targetElement.style.display === 'none') {
+                        targetElement.style.display = '';
+                        toggleText.textContent = '收起';
+                    } else {
+                        targetElement.style.display = 'none';
+                        toggleText.textContent = '展开';
+                    }
+                });
+            });
+        }
+
+        // 渲染单个待办事项
+        function renderTodoItem(todo) {
+            const priorityText = {
+                'high': '高',
+                'medium': '中',
+                'low': '低'
+            };
+
+            const priorityClass = {
+                'high': 'priority-high',
+                'medium': 'priority-medium',
+                'low': 'priority-low'
+            };
+
+            const typeText = {
+                'task': '任务',
+                'sprint': '迭代',
+                'user': '用户',
+                'defect': '缺陷'
+            };
+
+            return `
+                <div class="todo-item ${todo.priority}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${todo.title}</h6>
+                            <p class="mb-2 text-muted">${todo.description}</p>
+                            <div class="d-flex align-items-center">
+                                <span class="todo-type-badge badge bg-info">${typeText[todo.type]}</span>
+                                ${todo.due_date ? `<small class="text-muted me-3">截止日期: ${todo.due_date}</small>` : ''}
+                                <span class="priority-badge badge ${priorityClass[todo.priority]}">${priorityText[todo.priority]}优先级</span>
+                            </div>
+                        </div>
+<!--                        <a href="${todo.action_url}" class="btn btn-sm btn-outline-primary">处理</a>-->
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

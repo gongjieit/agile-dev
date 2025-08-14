@@ -13,7 +13,7 @@ class User(db.Model):
 # 角色模型
 class Role(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(64), unique=True, nullable=False)  # 角色名称，如 admin, PO, SM, PM, developer, test
+    name = db.Column(db.String(64), unique=True, nullable=False)  # 角色名称，如 admin, PO, SM, PM, developer, QA, UI
     display_name = db.Column(db.String(128), nullable=False)  # 角色显示名称
     description = db.Column(db.Text, nullable=True)  # 角色描述
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -298,7 +298,7 @@ class Defect(db.Model):
     severity = db.Column(db.String(32), default='一般')  # 严重程度：致命，严重，一般，提示，建议，保留
     defect_type = db.Column(db.String(64), default='功能问题')  # 缺陷类型
     status = db.Column(db.String(32), default='待处理')  # 缺陷状态：默认为待处理
-    resolver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 解决者：默认为未设置
+    resolver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # 缺陷解决者、处理人：默认为未设置
     resolution = db.Column(db.String(64), default='未设置')  # 处理结果：为空为未设置
     dev_team = db.Column(db.String(128), nullable=True)  # 开发团队
     collaborators = db.Column(db.String(256), nullable=True)  # 协助者：默认为未设置

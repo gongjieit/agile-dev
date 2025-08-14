@@ -87,6 +87,15 @@ def init_system_features():
                 'is_public': False
             },
 
+            # 我的待办功能
+            {
+                'name': '我的待办',
+                'description': '个人待办事项提醒',
+                'route_name': 'todos.my_todos',
+                'is_enabled': True,
+                'is_public': False
+            },
+
             # 管理知识库
             {
                 'name': '知识管理',

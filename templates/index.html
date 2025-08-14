@@ -7,9 +7,15 @@
 </head>
 <body class="bg-light">
     {% include 'navbar.html' %}
-    <div class="container-fluid mt-5">
-        <h3 class="mb-4">敏捷开发平台</h3>
-        
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">敏捷开发平台</h3>
+            {% if session.get('features', {}) and session.features.get('todos.my_todos') %}
+            <a href="{{ url_for('todos.my_todos') }}" class="btn btn-outline-primary">
+                我的待办 <span class="badge bg-danger" id="todo-count">0</span>
+            </a>
+            {% endif %}
+        </div>
         <div class="row">
             <div class="col-lg-8">
                 <div class="card mb-4">
@@ -90,49 +96,22 @@
                         <hr>
                         <div class="d-grid gap-2">
                             {% if system_features and 'users.users' in system_features and system_features['users.users'].is_enabled %}
-                            <a href="{{ url_for('users.users') }}" class="btn btn-secondary">管理用户</a>
+                            <a href="{{ url_for('users.users') }}" class="btn btn-secondary">用户管理</a>
                             {% endif %}
-                            {% if system_features and 'knowledge.manage' in system_features and system_features['knowledge.manage'].is_enabled %}
-                            <a href="{{ url_for('knowledge.knowledge') }}" class="btn btn-secondary">敏捷开发知识管理</a>
+                            {% if system_features and 'roles.roles' in system_features and system_features['roles.roles'].is_enabled %}
+                            <a href="{{ url_for('roles.roles') }}" class="btn btn-secondary">角色管理</a>
+                            {% endif %}
+                            {% if system_features and 'system_features.system_features' in system_features and system_features['system_features.system_features'].is_enabled %}
+                            <a href="{{ url_for('system_features.system_features') }}" class="btn btn-secondary">权限管理</a>
                             {% endif %}
                             {% if system_features and 'knowledge.knowledge_view' in system_features and system_features['knowledge.knowledge_view'].is_enabled %}
                             <a href="{{ url_for('knowledge.knowledge_view') }}" class="btn btn-secondary">敏捷开发知识库</a>
-                            {% endif %}
-                            {% if system_features and 'projects.projects' in system_features and system_features['projects.projects'].is_enabled %}
-                            <a href="{{ url_for('projects.projects') }}" class="btn btn-secondary">项目信息管理</a>
-                            {% endif %}
-                            {% if system_features and 'sprints.sprints' in system_features and system_features['sprints.sprints'].is_enabled %}
-                            <a href="{{ url_for('sprints.sprints') }}" class="btn btn-secondary">迭代管理</a>
-                            {% endif %}
-                            {% if system_features and 'user_stories.user_stories' in system_features and system_features['user_stories.user_stories'].is_enabled %}
-                            <a href="{{ url_for('user_stories.user_stories') }}" class="btn btn-secondary">用户故事管理</a>
-                            {% endif %}
-                            {% if system_features and 'tasks.tasks' in system_features and system_features['tasks.tasks'].is_enabled %}
-                            <a href="{{ url_for('tasks.tasks') }}" class="btn btn-secondary">任务管理</a>
-                            {% endif %}
-                            {% if system_features and 'system_features.system_features' in system_features and system_features['system_features.system_features'].is_enabled %}
-                            <a href="{{ url_for('system_features.system_features') }}" class="btn btn-secondary">系统功能管理</a>
                             {% endif %}
                         </div>
                         {% elif user %}
                         <!-- 普通用户可见的功能 -->
                         <hr>
                         <div class="d-grid gap-2">
-                            {% if system_features and 'features.features' in system_features and system_features['features.features'].is_enabled and system_features['features.features'].is_public %}
-                            <a href="{{ url_for('features.features') }}" class="btn btn-outline-secondary">功能点管理</a>
-                            {% endif %}
-                            {% if system_features and 'user_stories.user_stories' in system_features and system_features['user_stories.user_stories'].is_enabled and system_features['user_stories.user_stories'].is_public %}
-                            <a href="{{ url_for('user_stories.user_stories') }}" class="btn btn-outline-secondary">用户故事管理</a>
-                            {% endif %}
-                            {% if system_features and 'sprints.sprints' in system_features and system_features['sprints.sprints'].is_enabled and system_features['sprints.sprints'].is_public %}
-                            <a href="{{ url_for('sprints.sprints') }}" class="btn btn-outline-secondary">迭代管理</a>
-                            {% endif %}
-                            {% if system_features and 'tasks.tasks' in system_features and system_features['tasks.tasks'].is_enabled and system_features['tasks.tasks'].is_public %}
-                            <a href="{{ url_for('tasks.tasks') }}" class="btn btn-outline-secondary">任务管理</a>
-                            {% endif %}
-                            {% if system_features and 'users.users' in system_features and system_features['users.users'].is_enabled and system_features['users.users'].is_public %}
-                            <a href="{{ url_for('users.users') }}" class="btn btn-outline-secondary">用户管理</a>
-                            {% endif %}
                             {% if system_features and 'knowledge.knowledge_view' in system_features and system_features['knowledge.knowledge_view'].is_enabled and system_features['knowledge.knowledge_view'].is_public %}
                             <a href="{{ url_for('knowledge.knowledge_view') }}" class="btn btn-outline-secondary">敏捷开发知识</a>
                             {% endif %}
@@ -143,5 +122,30 @@
             </div>
         </div>
     </div>
+
+    <script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+    <script>
+        // 获取待办事项数量
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/api/my_todos')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const todoCountElement = document.getElementById('todo-count');
+                        if (todoCountElement) {
+                            todoCountElement.textContent = data.count;
+                            if (data.count > 0) {
+                                todoCountElement.style.display = 'inline';
+                            } else {
+                                todoCountElement.style.display = 'none';
+                            }
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('获取待办事项数量失败:', error);
+                });
+        });
+    </script>
 </body>
 </html>
