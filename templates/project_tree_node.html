@@ -1,6 +1,18 @@
 <li class="tree-node {{ node.node_type }}" data-node-id="{{ node.id }}">
     <div class="node-header">
         <div class="node-info">
+            {% if node.children %}
+                <span class="collapse-toggle" onclick="toggleChildren(this)">-</span>
+            {% else %}
+                <span class="collapse-toggle" style="visibility: hidden;">-</span>
+            {% endif %}
+            {% if node.node_type == 'project' %}
+                <span class="me-1">📁</span>
+            {% elif node.node_type == 'menu' %}
+                <span class="me-1">📂</span>
+            {% elif node.node_type == 'page' %}
+                <span class="me-1">📄</span>
+            {% endif %}
             <strong>{{ node.name }}</strong>
             {% if node.short_name %}
                 <span class="badge bg-secondary ms-2">{{ node.short_name }}</span>
@@ -10,18 +22,22 @@
         </div>
         <div class="node-actions">
             {% if node.node_type != 'page' %}
-                <button class="btn btn-sm btn-outline-primary" 
+                <button class="btn btn-sm btn-outline-primary"
                         onclick="addChildNode({{ node.id }}, 'menu')">添加菜单</button>
-                <button class="btn btn-sm btn-outline-info" 
+                <button class="btn btn-sm btn-outline-info"
                         onclick="addChildNode({{ node.id }}, 'page')">添加页面</button>
             {% endif %}
-            <button class="btn btn-sm btn-outline-secondary" 
+            <button class="btn btn-sm btn-outline-secondary"
+                    onclick="moveNodeUp({{ node.id }})">上移</button>
+            <button class="btn btn-sm btn-outline-secondary"
+                    onclick="moveNodeDown({{ node.id }})">下移</button>
+            <button class="btn btn-sm btn-outline-secondary"
                     onclick="editNode({{ node.id }}, '{{ node.name }}', '{{ node.short_name or '' }}', '{{ node.node_type }}')">编辑</button>
-            <button class="btn btn-sm btn-outline-danger" 
+            <button class="btn btn-sm btn-outline-danger"
                     onclick="deleteNode({{ node.id }})">删除</button>
         </div>
     </div>
-    
+
     {% if node.children %}
         <ul class="node-children">
             {% for child in node.children %}

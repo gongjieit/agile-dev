@@ -89,14 +89,19 @@ def add_project_node():
     if not name or not node_type:
         return jsonify({'success': False, 'message': '名称和节点类型不能为空'})
     
+    # 计算新节点的order值（在同级节点中排在最后）
+    max_order = db.session.query(db.func.max(ProjectInfo.order)).filter_by(parent_id=parent_id).scalar()
+    new_order = (max_order or 0) + 10
+
     # 创建新节点
     new_node = ProjectInfo(
         name=name,
         short_name=short_name if node_type == 'project' else None,
         node_type=node_type,
-        parent_id=parent_id if parent_id else None
+        parent_id=parent_id if parent_id else None,
+        order=new_order  # 设置order值
     )
-    
+
     # 设置路径
     if parent_id:
         parent = ProjectInfo.query.get(parent_id)
@@ -104,12 +109,12 @@ def add_project_node():
             new_node.path = f"{parent.path}/{name}" if parent.path else f"/{parent.name}/{name}"
     else:
         new_node.path = f"/{name}"
-    
+
     try:
         db.session.add(new_node)
         db.session.commit()
         return jsonify({
-            'success': True, 
+            'success': True,
             'message': '添加成功',
             'node': {
                 'id': new_node.id,
@@ -123,6 +128,7 @@ def add_project_node():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'添加失败: {str(e)}'})
+
 
 @projects_bp.route('/edit_project_node/<int:node_id>', methods=['POST'])
 def edit_project_node(node_id):
@@ -221,3 +227,101 @@ def move_project_node():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'移动失败: {str(e)}'})
+
+
+@projects_bp.route('/move_node_up/<int:node_id>', methods=['POST'])
+def move_node_up(node_id):
+    """上移节点"""
+    # 检查权限
+    if not check_system_feature_access(session, 'projects.projects'):
+        return jsonify({'success': False, 'message': '权限不足'})
+
+    node = ProjectInfo.query.get(node_id)
+    if not node:
+        return jsonify({'success': False, 'message': '节点不存在'})
+
+    # 获取同一父节点下的所有子节点，按order排序
+    siblings = ProjectInfo.query.filter_by(parent_id=node.parent_id).order_by(ProjectInfo.order).all()
+
+    # 如果只有一个节点或没有节点，则无法移动
+    if len(siblings) <= 1:
+        return jsonify({'success': False, 'message': '节点无法移动'})
+
+    # 找到当前节点的索引
+    current_index = None
+    for i, sibling in enumerate(siblings):
+        if sibling.id == node_id:
+            current_index = i
+            break
+
+    # 如果已经是第一个节点，则无法上移
+    if current_index is None or current_index == 0:
+        return jsonify({'success': False, 'message': '节点已在最顶部'})
+
+    # 重新分配所有同级节点的order值，确保它们是有序的
+    for i, sibling in enumerate(siblings):
+        sibling.order = i * 10  # 使用间隔为10的数字，方便后续插入
+
+    # 交换当前节点与前一个节点的位置
+    siblings[current_index], siblings[current_index - 1] = siblings[current_index - 1], siblings[current_index]
+
+    # 重新分配order值
+    for i, sibling in enumerate(siblings):
+        sibling.order = i * 10
+
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'message': '上移成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'上移失败: {str(e)}'})
+
+
+@projects_bp.route('/move_node_down/<int:node_id>', methods=['POST'])
+def move_node_down(node_id):
+    """下移节点"""
+    # 检查权限
+    if not check_system_feature_access(session, 'projects.projects'):
+        return jsonify({'success': False, 'message': '权限不足'})
+
+    node = ProjectInfo.query.get(node_id)
+    if not node:
+        return jsonify({'success': False, 'message': '节点不存在'})
+
+    # 获取同一父节点下的所有子节点，按order排序
+    siblings = ProjectInfo.query.filter_by(parent_id=node.parent_id).order_by(ProjectInfo.order).all()
+
+    # 如果只有一个节点或没有节点，则无法移动
+    if len(siblings) <= 1:
+        return jsonify({'success': False, 'message': '节点无法移动'})
+
+    # 找到当前节点的索引
+    current_index = None
+    for i, sibling in enumerate(siblings):
+        if sibling.id == node_id:
+            current_index = i
+            break
+
+    # 如果已经是最后一个节点，则无法下移
+    if current_index is None or current_index == len(siblings) - 1:
+        return jsonify({'success': False, 'message': '节点已在最底部'})
+
+    # 重新分配所有同级节点的order值，确保它们是有序的
+    for i, sibling in enumerate(siblings):
+        sibling.order = i * 10  # 使用间隔为10的数字，方便后续插入
+
+    # 交换当前节点与后一个节点的位置
+    siblings[current_index], siblings[current_index + 1] = siblings[current_index + 1], siblings[current_index]
+
+    # 重新分配order值
+    for i, sibling in enumerate(siblings):
+        sibling.order = i * 10
+
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'message': '下移成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'下移失败: {str(e)}'})
+
+

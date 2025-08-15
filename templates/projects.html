@@ -89,18 +89,29 @@
             background-color: #d1ecf1;
             border: 1px solid #bee5eb;
         }
+
+        /* 折叠功能样式 */
+        .collapse-toggle {
+            cursor: pointer;
+            margin-right: 5px;
+            width: 16px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .node-children.collapsed {
+            display: none;
+        }
+
+        .toggle-all-container {
+            margin-bottom: 15px;
+            text-align: right;
+        }
     </style>
 </head>
 <body class="bg-light">
 {% include 'navbar.html' %}
-<div class="container-fluid mt-5">
-    <!-- 添加面包屑导航 -->
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb breadcrumb-chevron">
-            <li class="breadcrumb-item"><a href="{{ url_for('auth.index') }}">首页</a></li>
-            <li class="breadcrumb-item active" aria-current="page">项目信息管理</li>
-        </ol>
-    </nav>
+<div class="container-fluid mt-4">
     
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="mb-0">项目信息管理</h3>
@@ -110,8 +121,11 @@
     </div>
     
     <div class="card">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">项目树形结构</h5>
+            {% if projects_tree %}
+                <button class="btn btn-sm btn-outline-secondary" id="toggle-all">全部收起</button>
+            {% endif %}
         </div>
         <div class="card-body">
             {% if projects_tree %}
@@ -373,6 +387,83 @@
         var bootstrapModal = new bootstrap.Modal(modal);
         bootstrapModal.show();
     }
+
+    // 上移节点函数
+    function moveNodeUp(nodeId) {
+        fetch('{{ url_for("projects.move_node_up", node_id=0) }}'.replace('0', nodeId), {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('上移失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('上移失败: ' + error);
+        });
+    }
+
+    // 下移节点函数
+    function moveNodeDown(nodeId) {
+        fetch('{{ url_for("projects.move_node_down", node_id=0) }}'.replace('0', nodeId), {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('下移失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('下移失败: ' + error);
+        });
+    }
+
+    // 收起/展开子节点功能
+    function toggleChildren(element) {
+        const listItem = element.closest('li');
+        const childrenContainer = listItem.querySelector('.node-children');
+
+        if (childrenContainer) {
+            childrenContainer.classList.toggle('collapsed');
+            element.textContent = childrenContainer.classList.contains('collapsed') ? '+' : '-';
+        }
+    }
+
+    // 全部收起/展开功能
+    document.getElementById('toggle-all').addEventListener('click', function() {
+        const tree = document.getElementById('project-tree');
+        const toggles = tree.querySelectorAll('.collapse-toggle');
+        const isCollapsed = this.textContent === '全部展开';
+
+        toggles.forEach(toggle => {
+            const listItem = toggle.closest('li');
+            const childrenContainer = listItem.querySelector('.node-children');
+
+            if (childrenContainer) {
+                if (isCollapsed) {
+                    // 展开
+                    childrenContainer.classList.remove('collapsed');
+                    toggle.textContent = '-';
+                } else {
+                    // 收起
+                    childrenContainer.classList.add('collapsed');
+                    toggle.textContent = '+';
+                }
+            }
+        });
+
+        // 切换按钮文字
+        this.textContent = isCollapsed ? '全部收起' : '全部展开';
+    });
 </script>
+
 </body>
 </html>
