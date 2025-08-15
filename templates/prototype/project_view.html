@@ -6,6 +6,176 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .tree-node {
+            list-style-type: none;
+            margin: 5px 0;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+
+        .tree-node.project {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .tree-node.menu {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+
+        .tree-node.page {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-info {
+            flex-grow: 1;
+        }
+
+        .node-children {
+            margin-left: 20px;
+            padding-left: 10px;
+            border-left: 1px dashed #ccc;
+        }
+
+        .node-type-badge {
+            font-size: 0.75em;
+        }
+
+        .project .node-type-badge {
+            background-color: #6c757d;
+        }
+
+        .menu .node-type-badge {
+            background-color: #ffc107;
+        }
+
+        .page .node-type-badge {
+            background-color: #17a2b8;
+        }
+
+        /* 折叠功能样式 */
+        .collapse-toggle {
+            cursor: pointer;
+            margin-right: 5px;
+            width: 16px;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .node-children.collapsed {
+            display: none;
+        }
+
+        .toggle-all-container {
+            text-align: right;
+        }
+
+        .card-header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-name {
+            cursor: pointer;
+        }
+
+        .node-name:hover {
+            text-decoration: underline;
+        }
+
+        /* 左侧树形结构收缩功能样式 */
+        .sidebar {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            flex: 0 0 40px !important;
+            min-width: 40px !important;
+        }
+
+        .sidebar-content {
+            display: block;
+        }
+
+        .sidebar.collapsed .sidebar-content {
+            display: none;
+        }
+
+        .toggle-sidebar-btn {
+            position: absolute;
+            top: 50%;
+            right: -12px;
+            transform: translateY(-50%);
+            z-index: 100;
+            width: 24px;
+            height: 30px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .toggle-sidebar-btn {
+            border-radius: 5px 0 0 5px;
+            right: -12px;
+        }
+
+        .sidebar.collapsed .toggle-sidebar-btn i {
+            transform: rotate(180deg);
+        }
+
+        .main-content {
+            transition: all 0.3s ease;
+        }
+
+        .sidebar.collapsed + .main-content {
+            flex: 0 0 calc(100% - 40px) !important;
+            max-width: calc(100% - 40px) !important;
+        }
+
+        /* 响应式预览区域 */
+        .preview-image {
+            max-height: 75vh;
+            max-width: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            transition: all 0.3s ease;
+        }
+
+        /* 当侧边栏收缩时，预览图可以更大 */
+        .sidebar.collapsed ~ .main-content .preview-image {
+            max-height: 85vh;
+        }
+
+        /* 预览容器样式 */
+        .preview-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 70vh;
+        }
+
+        .sidebar.collapsed ~ .main-content .preview-container {
+            min-height: 80vh;
+        }
+    </style>
 </head>
 <body>
     {% include 'navbar.html' %}
@@ -26,53 +196,77 @@
 
         <div class="row">
             <!-- 项目结构树 -->
-            <div class="col-md-3">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">项目结构</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="project-tree">
-                            {% macro render_node(node, level=0) %}
-                                <div class="project-node" style="margin-left: {{ level * 20 }}px;">
-                                    <div class="d-flex align-items-center mb-1">
-                                        {% if node.node_type == 'project' %}
-                                            <i class="fas fa-folder text-warning me-2"></i>
-                                        {% elif node.node_type == 'menu' %}
-                                            <i class="fas fa-folder-open text-info me-2"></i>
-                                        {% else %}
-                                            <i class="fas fa-file text-secondary me-2"></i>
-                                        {% endif %}
-                                        <span class="node-name" data-node-id="{{ node.id }}">{{ node.name }}</span>
-                                    </div>
-                                    
-                                    {% if prototypes_by_node[node.id] %}
-                                        <div class="prototype-list ms-4">
-                                            {% for prototype in prototypes_by_node[node.id] %}
-                                                <div class="prototype-item d-flex align-items-center mb-1">
-                                                    <i class="fas fa-image text-primary me-2"></i>
-                                                    <a href="#" class="prototype-link" data-prototype-id="{{ prototype.id }}">
-                                                        {{ prototype.name }}
-                                                    </a>
-                                                </div>
-                                            {% endfor %}
+            <div class="col-md-3 sidebar">
+                <button class="toggle-sidebar-btn" id="toggle-sidebar">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="sidebar-content">
+                    <div class="card">
+                        <div class="card-header card-header-flex">
+                            <h5 class="mb-0">项目结构</h5>
+                            <div class="toggle-all-container">
+                                <button class="btn btn-sm btn-outline-secondary" id="toggle-all">全部收起</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="project-tree">
+                                {% macro render_node(node, level=0) %}
+                                    <div class="tree-node {{ node.node_type }}" data-node-id="{{ node.id }}">
+                                        <div class="node-header">
+                                            <div class="node-info">
+                                                {% if node.children | length > 0 %}
+                                                    <span class="collapse-toggle" onclick="toggleChildren(this)">-</span>
+                                                {% else %}
+                                                    <span class="collapse-toggle" style="visibility: hidden;">-</span>
+                                                {% endif %}
+                                                {% if node.node_type == 'project' %}
+                                                    <span class="me-1">📁</span>
+                                                {% elif node.node_type == 'menu' %}
+                                                    <span class="me-1">📂</span>
+                                                {% else %}
+                                                    <span class="me-1">📄</span>
+                                                {% endif %}
+                                                <strong class="node-name" data-node-id="{{ node.id }}">{{ node.name }}</strong>
+                                                <span class="badge node-type-badge">{{ node.node_type }}</span>
+                                            </div>
                                         </div>
-                                    {% endif %}
-                                    
-                                    {% for child in node.children %}
-                                        {{ render_node(child, level + 1) }}
-                                    {% endfor %}
-                                </div>
-                            {% endmacro %}
-                            
-                            {{ render_node(project) }}
+
+                                        {% if prototypes_by_node[node.id] %}
+                                            <div class="node-children">
+                                                {% for prototype in prototypes_by_node[node.id] %}
+                                                    <div class="tree-node prototype-item">
+                                                        <div class="node-header">
+                                                            <div class="node-info">
+                                                                <span class="me-1">🎨</span>
+                                                                <a href="#" class="prototype-link" data-prototype-id="{{ prototype.id }}">
+                                                                    {{ prototype.name }}
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+
+                                        {% if node.children | length > 0 %}
+                                            <div class="node-children">
+                                                {% for child in node.children | sort(attribute='order') %}
+                                                    {{ render_node(child, level + 1) }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endmacro %}
+
+                                {{ render_node(project) }}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- 原型图预览区域 -->
-            <div class="col-md-9">
+            <div class="col-md-9 main-content">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">原型图预览</h5>
@@ -105,6 +299,25 @@
                 const prototypeId = this.dataset.prototypeId;
                 previewPrototype(prototypeId);
             });
+        });
+
+        // 左侧树形结构收缩功能
+        document.getElementById('toggle-sidebar').addEventListener('click', function() {
+            const sidebar = this.closest('.sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const icon = this.querySelector('i');
+
+            sidebar.classList.toggle('collapsed');
+
+            // 旋转图标
+            if (sidebar.classList.contains('collapsed')) {
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                icon.style.transform = 'rotate(0deg)';
+            }
+
+            // 触发窗口大小变化事件，让图表等响应式元素重新调整大小
+            window.dispatchEvent(new Event('resize'));
         });
     });
 
@@ -170,13 +383,12 @@
                     document.getElementById('prototype-preview').innerHTML = `
                         <div class="prototype-preview-content">
                             <div class="row">
-                                <div class="col-md-8">
-                                    <div class="text-center mb-3">
-                                        <img src="${image.file_path}" class="img-fluid border rounded" alt="${image.name}" 
-                                             style="max-height: 500px; object-fit: contain;">
+                                <div class="col-md-9">
+                                    <div class="preview-container">
+                                        <img src="${image.file_path}" class="preview-image border rounded" alt="${image.name}">
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <h5>${image.name}</h5>
                                     <div class="mt-3 text-start">
                                         <p><strong>描述:</strong> ${image.description || '无'}</p>
@@ -209,6 +421,44 @@
                     `<p class="text-danger">加载失败: ${error.message}</p>`;
             });
     }
+
+    // 收起/展开子节点功能
+    function toggleChildren(element) {
+        const nodeDiv = element.closest('.tree-node');
+        const childrenContainer = nodeDiv.querySelector('.node-children');
+
+        if (childrenContainer) {
+            childrenContainer.classList.toggle('collapsed');
+            element.textContent = childrenContainer.classList.contains('collapsed') ? '+' : '-';
+        }
+    }
+
+    // 全部收起/展开功能
+    document.getElementById('toggle-all').addEventListener('click', function() {
+        const tree = document.getElementById('project-tree');
+        const toggles = tree.querySelectorAll('.collapse-toggle');
+        const isCollapsed = this.textContent === '全部展开';
+
+        toggles.forEach(toggle => {
+            const nodeDiv = toggle.closest('.tree-node');
+            const childrenContainer = nodeDiv.querySelector('.node-children');
+
+            if (childrenContainer) {
+                if (isCollapsed) {
+                    // 展开
+                    childrenContainer.classList.remove('collapsed');
+                    toggle.textContent = '-';
+                } else {
+                    // 收起
+                    childrenContainer.classList.add('collapsed');
+                    toggle.textContent = '+';
+                }
+            }
+        });
+
+        // 切换按钮文字
+        this.textContent = isCollapsed ? '全部收起' : '全部展开';
+    });
     </script>
 </body>
 </html>

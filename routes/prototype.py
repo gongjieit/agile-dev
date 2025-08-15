@@ -25,37 +25,40 @@ def prototype_list():
     
     return render_template('prototype/list.html', projects=root_projects)
 
+
 @prototype_bp.route('/prototype/project/<int:project_id>')
 def project_prototypes(project_id):
     """查看项目原型图"""
     if not check_system_feature_access(session, 'prototype.prototype_list'):
         return jsonify({'success': False, 'message': '权限不足'})
-    
+
     try:
         # 获取项目及其所有子节点
         project = ProjectInfo.query.get_or_404(project_id)
-        
-        # 获取项目的所有节点（包括自身）
+
+        # 获取项目的所有节点（包括自身），并按order排序
         all_nodes = get_all_project_nodes(project_id)
         node_ids = [node.id for node in all_nodes]
-        
+
         # 获取这些节点下的所有原型图
         prototypes = PrototypeImage.query.filter(
             PrototypeImage.project_node_id.in_(node_ids)
         ).order_by(PrototypeImage.created_at.desc()).all()
-        
-        # 按节点分组原型图
+
+        # 按节点分组原型图，保持节点顺序
         prototypes_by_node = {}
+        for node in all_nodes:
+            prototypes_by_node[node.id] = []
+
         for prototype in prototypes:
             node_id = prototype.project_node_id
-            if node_id not in prototypes_by_node:
-                prototypes_by_node[node_id] = []
-            prototypes_by_node[node_id].append(prototype)
-        
-        return render_template('prototype/project_view.html', 
-                             project=project, 
-                             all_nodes=all_nodes,
-                             prototypes_by_node=prototypes_by_node)
+            if node_id in prototypes_by_node:
+                prototypes_by_node[node_id].append(prototype)
+
+        return render_template('prototype/project_view.html',
+                               project=project,
+                               all_nodes=all_nodes,
+                               prototypes_by_node=prototypes_by_node)
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
@@ -262,7 +265,7 @@ def get_project_nodes(project_id):
     """获取项目的所有节点（AJAX）"""
     if not check_system_feature_access(session, 'prototype.prototype_list'):
         return jsonify({'success': False, 'message': '权限不足'})
-    
+
     try:
         nodes = get_all_project_nodes(project_id)
         nodes_data = [{
@@ -271,7 +274,7 @@ def get_project_nodes(project_id):
             'node_type': node.node_type,
             'path': node.path
         } for node in nodes]
-        
+
         return jsonify({
             'success': True,
             'nodes': nodes_data
@@ -279,22 +282,24 @@ def get_project_nodes(project_id):
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+
 def get_all_project_nodes(project_id):
     """递归获取项目的所有节点"""
-    def _get_children(node):
+    def _get_children(parent_id):
         children = []
-        for child in node.children:
+        # 按照order字段排序获取子节点
+        for child in ProjectInfo.query.filter_by(parent_id=parent_id).order_by(ProjectInfo.order):
             children.append(child)
-            children.extend(_get_children(child))
+            children.extend(_get_children(child.id))
         return children
-    
+
     # 获取根节点
     root_node = ProjectInfo.query.get(project_id)
     if not root_node:
         return []
-    
+
     # 获取所有子节点
     all_nodes = [root_node]
-    all_nodes.extend(_get_children(root_node))
-    
+    all_nodes.extend(_get_children(root_node.id))
+
     return all_nodes
