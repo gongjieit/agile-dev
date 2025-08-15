@@ -24,6 +24,15 @@ def kanban():
 
     return render_template('kanban.html', sprints=sprints)
 
+def get_priority_order(priority):
+    """获取优先级排序值，用于排序"""
+    priority_map = {
+        '高': 0,
+        '中': 1,
+        '低': 2
+    }
+    return priority_map.get(priority, 3)  # 未知优先级排在最后
+
 @kanban_bp.route('/get_kanban_data/<int:sprint_id>')
 def get_kanban_data(sprint_id):
     """获取看板数据"""
@@ -109,6 +118,13 @@ def get_kanban_data(sprint_id):
                 'story_title': story.title if story else '',
                 'story_id': story.story_id if story else ''
             })
+
+        # 按负责人和优先级排序任务
+        tasks_data.sort(key=lambda x: (
+            x['assignee_id'] is None,  # 未分配的任务排在前面
+            x['assignee_name'] or '',  # 按负责人名称排序
+            get_priority_order(x['priority'])  # 按优先级排序
+        ))
 
         # 获取该迭代下的所有缺陷
         defects = Defect.query.filter_by(sprint_id=sprint_id).all()
